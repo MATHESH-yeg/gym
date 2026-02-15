@@ -8,3 +8,5 @@ app.listen(port, () => {
 🌍 Environment: ${process.env.NODE_ENV}
     `);
 });
+
+module.exports = app;
