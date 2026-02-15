@@ -10,6 +10,7 @@ const { auth, authorize } = require('../middleware/auth');
 // --- Auth Routes ---
 router.post('/auth/register-master', authController.registerMaster);
 router.post('/auth/login', authController.login);
+router.post('/auth/refresh', authController.refresh);
 
 // --- Invite Routes (Brand Admin only) ---
 router.post('/invites/generate', auth, authorize('BRAND_ADMIN'), inviteController.generateInvite);

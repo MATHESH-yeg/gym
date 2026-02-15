@@ -70,13 +70,22 @@ const registerMaster = async (req, res) => {
         await query('COMMIT');
 
         const user = userRes.rows[0];
-        const token = jwt.sign(
+
+        // Generate Access Token (Short-lived)
+        const accessToken = jwt.sign(
             { id: user.id, role: user.role, brand_id: user.brand_id, account_type: user.account_type },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
+            process.env.JWT_ACCESS_SECRET,
+            { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
         );
 
-        res.status(201).json({ user, token });
+        // Generate Refresh Token (Long-lived)
+        const refreshToken = jwt.sign(
+            { id: user.id },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
+        );
+
+        res.status(201).json({ user, accessToken, refreshToken });
 
     } catch (err) {
         await query('ROLLBACK');
@@ -84,6 +93,8 @@ const registerMaster = async (req, res) => {
         res.status(500).json({ error: 'Registration failed. Email might already exist.' });
     }
 };
+
+
 
 const login = async (req, res) => {
     const { email, password } = req.body;
@@ -99,20 +110,51 @@ const login = async (req, res) => {
         // Update last login
         await query('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
-        const token = jwt.sign(
+        const accessToken = jwt.sign(
             { id: user.id, role: user.role, brand_id: user.brand_id, branch_id: user.branch_id },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
+            process.env.JWT_ACCESS_SECRET,
+            { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
+        );
+
+        const refreshToken = jwt.sign(
+            { id: user.id },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
         );
 
         // Remove password from response
         delete user.password_hash;
 
-        res.json({ user, token });
+        res.json({ user, accessToken, refreshToken });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
 };
 
-module.exports = { registerMaster, login };
+const refresh = async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ error: 'Refresh token required' });
+
+    try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+        // Fetch user to ensure they still exist/are active
+        const result = await query('SELECT id, role, brand_id, branch_id FROM users WHERE id = $1 AND is_active = TRUE', [decoded.id]);
+        const user = result.rows[0];
+
+        if (!user) return res.status(401).json({ error: 'User no longer active' });
+
+        const newAccessToken = jwt.sign(
+            { id: user.id, role: user.role, brand_id: user.brand_id, branch_id: user.branch_id },
+            process.env.JWT_ACCESS_SECRET,
+            { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN }
+        );
+
+        res.json({ accessToken: newAccessToken });
+    } catch (err) {
+        res.status(403).json({ error: 'Invalid refresh token' });
+    }
+};
+
+module.exports = { registerMaster, login, refresh };
