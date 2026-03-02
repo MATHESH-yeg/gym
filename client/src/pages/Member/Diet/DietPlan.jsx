@@ -16,8 +16,8 @@ const DietPlan = () => {
     const userPlans = dietPlans[user.id] || [];
 
     // Separate master-assigned and personal plans
-    const masterAssignedPlans = userPlans.filter(p => p.createdBy === 'MASTER');
-    const personalPlans = userPlans.filter(p => !p.createdBy || p.createdBy === user.id);
+    const masterAssignedPlans = userPlans.filter(p => p.createdBy === 'MASTER' || p.createdBy === 'TRAINER');
+    const personalPlans = userPlans.filter(p => !p.createdBy || p.createdBy === user.id || p.createdBy === 'MEMBER');
 
     const handleSavePlan = (e) => {
         e.preventDefault();
@@ -43,7 +43,7 @@ const DietPlan = () => {
 
     const handleEdit = (plan) => {
         // Only allow editing personal plans or if user is master
-        if (plan.createdBy !== 'MASTER' || user.role === 'MASTER') {
+        if (plan.createdBy !== 'MASTER' && plan.createdBy !== 'TRAINER') {
             setEditingPlan(plan);
             setIsModalOpen(true);
         }
@@ -51,7 +51,7 @@ const DietPlan = () => {
 
     const handleDelete = (plan) => {
         // Only allow deleting personal plans
-        if (plan.createdBy !== 'MASTER') {
+        if (plan.createdBy !== 'MASTER' && plan.createdBy !== 'TRAINER') {
             if (window.confirm('Delete this plan?')) {
                 deleteDietPlan(user.id, plan.id);
             }
@@ -76,7 +76,7 @@ const DietPlan = () => {
                 <div style={{ flex: 1 }}>
                     {isMasterAssigned && (
                         <span style={{ fontSize: '0.65rem', color: '#BEFF00', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                            <Award size={12} /> TRAINER ASSIGNED
+                            <Award size={12} /> {plan.createdBy === 'MASTER' ? 'MASTER ASSIGNED' : 'TRAINER ASSIGNED'}
                         </span>
                     )}
                     <h3 style={{ fontSize: '1.25rem', color: isMasterAssigned ? '#BEFF00' : 'var(--primary)' }}>{plan.name}</h3>
@@ -156,7 +156,7 @@ const DietPlan = () => {
             {/* Master-Assigned Section */}
             {masterAssignedPlans.length > 0 && (
                 <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1rem', color: '#BEFF00' }}>TRAINER ASSIGNED PLANS</h3>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '1rem', color: '#BEFF00' }}>ASSIGNED PLANS</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         {masterAssignedPlans.map(plan => renderPlanCard(plan, true))}
                     </div>

@@ -3,20 +3,24 @@ import { useData } from '../../../context/DataContext';
 import {
     Plus, Search, Edit, Trash2, User, Phone, Mail,
     Calendar, Award, DollarSign, TrendingUp, Users,
-    MoreVertical, CheckCircle, XCircle, Trash
+    MoreVertical, CheckCircle, XCircle, Trash, Eye, Check
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Trainers = () => {
     const {
-        trainers, members, payments, saveTrainer, deleteTrainer
+        trainers = [], members = [], payments = [], saveTrainer, deleteTrainer, updateMember
     } = useData();
+    const navigate = useNavigate();
 
     // UI state
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTrainer, setEditingTrainer] = useState(null);
     const [showDeleted, setShowDeleted] = useState(false);
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assignSearch, setAssignSearch] = useState('');
 
     // Trainer form state
     const [formData, setFormData] = useState({
@@ -31,7 +35,7 @@ const Trainers = () => {
 
     // --- Analytics Logic ---
     const getTrainerStats = (trainerId) => {
-        const trainerMembers = members.filter(m => m.trainerId === trainerId);
+        const trainerMembers = (members || []).filter(m => m.trainerId === trainerId);
         const activeMembers = trainerMembers.filter(m => m.status === 'active').length;
         const expiredMembers = trainerMembers.filter(m => m.status === 'expired').length;
 
@@ -39,7 +43,7 @@ const Trainers = () => {
         const trainerMemberIds = trainerMembers.map(m => m.id);
 
         // Payments from these members
-        const trainerPayments = payments.filter(p => trainerMemberIds.includes(p.memberId));
+        const trainerPayments = (payments || []).filter(p => trainerMemberIds.includes(p.memberId));
         const totalRevenue = trainerPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
         const renewals = trainerPayments.length;
 
@@ -52,7 +56,7 @@ const Trainers = () => {
         };
     };
 
-    const filteredTrainers = trainers.filter(t => {
+    const filteredTrainers = (trainers || []).filter(t => {
         const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             t.specialization?.toLowerCase().includes(searchTerm.toLowerCase());
         const isDeleted = t.status === 'Deleted';
@@ -109,6 +113,17 @@ const Trainers = () => {
     const handlePermanentDelete = (id) => {
         if (window.confirm('Permanently delete this trainer? This cannot be undone.')) {
             deleteTrainer(id);
+        }
+    };
+
+    const handleAssignMember = (memberId) => {
+        if (!editingTrainer) return;
+        updateMember(memberId, { trainerId: editingTrainer.id });
+    };
+
+    const handleUnassignMember = (memberId) => {
+        if (window.confirm('Are you sure you want to remove this member from the trainer?')) {
+            updateMember(memberId, { trainerId: null });
         }
     };
 
@@ -241,6 +256,16 @@ const Trainers = () => {
                             </div>
 
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                                <button
+                                    className="btn-outline"
+                                    style={{ flex: 1, justifyContent: 'center', gap: '0.4rem', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+                                    onClick={() => {
+                                        setEditingTrainer(trainer);
+                                        setIsAssignModalOpen(true);
+                                    }}
+                                >
+                                    <Plus size={16} /> Assign
+                                </button>
                                 <button className="btn-outline" style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleOpenModal(trainer)}>
                                     <Edit size={16} /> Edit
                                 </button>
@@ -372,6 +397,80 @@ const Trainers = () => {
                                     <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingTrainer ? 'Update Trainer' : 'Save Trainer'}</button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+                {isAssignModalOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="premium-card"
+                            style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Assign Members</h3>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>Assigning to: {editingTrainer?.name}</p>
+                                </div>
+                                <button onClick={() => setIsAssignModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer' }}><XCircle size={24} /></button>
+                            </div>
+
+                            <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                                <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} size={16} />
+                                <input
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.5rem', height: '40px' }}
+                                    placeholder="Search member to assign..."
+                                    value={assignSearch}
+                                    onChange={(e) => setAssignSearch(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {members
+                                    .filter(m => {
+                                        const isAssignedToThis = m.trainerId === editingTrainer?.id;
+                                        const matchesSearch = assignSearch.length > 0 && (
+                                            m.name.toLowerCase().includes(assignSearch.toLowerCase()) ||
+                                            m.id.toLowerCase().includes(assignSearch.toLowerCase())
+                                        );
+                                        return isAssignedToThis || matchesSearch;
+                                    })
+                                    .slice(0, 50)
+                                    .map(member => (
+                                        <div key={member.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                            <div>
+                                                <p style={{ fontSize: '0.9rem', fontWeight: '600', color: member.trainerId === editingTrainer?.id ? 'var(--primary)' : 'white' }}>{member.name}</p>
+                                                <p style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)' }}>ID: {member.id} • Assigned: {trainers.find(t => t.id === member.trainerId)?.name || 'None'}</p>
+                                            </div>
+                                            {member.trainerId === editingTrainer?.id ? (
+                                                <button
+                                                    className="btn-outline"
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.7rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                                    onClick={() => handleUnassignMember(member.id)}
+                                                >
+                                                    Remove
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    className="btn-primary"
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.7rem' }}
+                                                    onClick={() => handleAssignMember(member.id)}
+                                                >
+                                                    Assign
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                {assignSearch.length === 0 && members.filter(m => m.trainerId === editingTrainer?.id).length === 0 && (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--muted-foreground)', fontSize: '0.8rem' }}>
+                                        No members assigned. Search to add.
+                                    </div>
+                                )}
+                            </div>
+
+                            <button className="btn-outline" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => setIsAssignModalOpen(false)}>Close</button>
                         </motion.div>
                     </div>
                 )}

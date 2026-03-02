@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useData } from '../../../context/DataContext';
-import { Plus, Search, Edit, Trash2, Eye, Dumbbell, Flame, User, CheckCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Dumbbell, Flame, User, CheckCircle, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const Members = () => {
     // Context Data
     const {
-        members, programs, addMember, updateMember, changeMemberId, deleteMember, assignWorkout,
-        trainers, saveTrainer, deleteTrainer
+        members = [], programs = [], addMember, updateMember, changeMemberId, deleteMember, assignWorkout,
+        trainers = [], saveTrainer, deleteTrainer
     } = useData();
 
     const navigate = useNavigate();
@@ -22,7 +22,6 @@ const Members = () => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
     const [initialId, setInitialId] = useState('');
-    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [newMember, setNewMember] = useState({ name: '', id: '', experience: '', status: 'active' });
 
     React.useEffect(() => {
@@ -32,9 +31,9 @@ const Members = () => {
     }, [location.state]);
 
     // --- MEMBER HANDLERS ---
-    const filteredMembers = members.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.id.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredMembers = (members || []).filter(m =>
+        m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.id?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleAddMember = (e) => {
@@ -42,17 +41,8 @@ const Members = () => {
 
         const memberData = { ...newMember };
 
-        if (!memberData.id) {
-            let count = members.length + 1;
-            let potentialId = `OLIVA-${count.toString().padStart(3, '0')}`;
-            while (members.some(m => m.id === potentialId)) {
-                count++;
-                potentialId = `OLIVA-${count.toString().padStart(3, '0')}`;
-            }
-            memberData.id = potentialId;
-        }
-
-        if (memberData.name && memberData.id) {
+        // If ID is provided, use it. If not, DataContext will generate a proper one.
+        if (memberData.name) {
             addMember(memberData);
             setNewMember({ name: '', id: '', experience: '', status: 'active' });
             setIsAddModalOpen(false);
@@ -129,7 +119,7 @@ const Members = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredMembers.map((member) => (
+                        {(filteredMembers || []).map((member) => (
                             <tr key={member.id}>
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -164,7 +154,7 @@ const Members = () => {
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                                         <button onClick={() => navigate(`/master/members/${member.id}`)} style={{ color: 'var(--primary)' }} title="Monitor Progress"><Eye size={18} /></button>
                                         <button onClick={() => { setSelectedMember(member); setInitialId(member.id); setIsEditModalOpen(true); }} style={{ color: 'var(--muted-foreground)' }} title="Edit Profile"><Edit size={18} /></button>
-                                        <button onClick={() => { setSelectedMember(member); setIsAssignModalOpen(true); }} style={{ color: 'var(--muted-foreground)' }} title="Assign Workout"><Dumbbell size={18} /></button>
+                                        <button onClick={() => navigate(`/master/members/${member.id}`, { state: { activeTab: 'workout' } })} style={{ color: 'var(--muted-foreground)' }} title="Assign Workout"><Dumbbell size={18} /></button>
                                         <button onClick={() => handleDeleteMember(member.id)} style={{ color: 'var(--destructive)' }} title="Delete Member"><Trash2 size={18} /></button>
                                     </div>
                                 </td>
@@ -253,8 +243,19 @@ const Members = () => {
                                                 <input
                                                     type="date"
                                                     className="input-field"
-                                                    value={selectedMember?.expiryDate ? new Date(selectedMember.expiryDate).toISOString().split('T')[0] : ''}
-                                                    onChange={(e) => setSelectedMember({ ...selectedMember, expiryDate: new Date(e.target.value).toISOString() })}
+                                                    value={selectedMember?.expiryDate ? selectedMember.expiryDate.split('T')[0] : ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val) {
+                                                            try {
+                                                                setSelectedMember({ ...selectedMember, expiryDate: new Date(val).toISOString() });
+                                                            } catch (err) {
+                                                                console.error("Invalid date", err);
+                                                            }
+                                                        } else {
+                                                            setSelectedMember({ ...selectedMember, expiryDate: '' });
+                                                        }
+                                                    }}
                                                 />
                                             </div>
                                         </div>
@@ -285,61 +286,7 @@ const Members = () => {
                 )}
             </AnimatePresence>
 
-            {/* ASSIGN WORKOUT MODAL */}
-            <AnimatePresence>
-                {selectedMember && isAssignModalOpen && (
-                    <div className="sidebar-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="premium-card"
-                            style={{
-                                width: '100%',
-                                maxWidth: '500px',
-                                maxHeight: '80vh',
-                                overflowY: 'auto'
-                            }}
-                        >
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.25rem' }}>Assign Workout</h3>
-                                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Target: <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{selectedMember.name}</span></p>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {programs.length === 0 ? (
-                                    <div className="empty-state" style={{ padding: '2rem' }}>
-                                        <Dumbbell size={32} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-                                        <p>No programs available.</p>
-                                    </div>
-                                ) : (
-                                    programs.map(p => (
-                                        <button
-                                            key={p.id}
-                                            className="btn-outline"
-                                            style={{ justifyContent: 'space-between', padding: '1rem', textAlign: 'left', minHeight: 'auto' }}
-                                            onClick={() => {
-                                                assignWorkout(selectedMember.id, p);
-                                                setIsAssignModalOpen(false);
-                                                setSelectedMember(null);
-                                            }}
-                                        >
-                                            <div>
-                                                <p style={{ fontWeight: '700', fontSize: '1rem' }}>{p.name}</p>
-                                                <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>{p.exercises?.length || 0} exercises • {p.duration || '4 weeks'}</p>
-                                            </div>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(132, 204, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                                <Plus size={18} />
-                                            </div>
-                                        </button>
-                                    ))
-                                )}
-                                <button className="btn-outline" style={{ marginTop: '1rem' }} onClick={() => setIsAssignModalOpen(false)}>Maybe Later</button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            {/* ASSIGN WORKOUT MODAL REMOVED - User uses native detail screen now */}
         </div>
     );
 };

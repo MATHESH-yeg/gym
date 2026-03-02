@@ -166,7 +166,7 @@ const AssignedWorkoutRunner = () => {
                             <ChevronLeft size={20} />
                         </button>
                         <div>
-                            <h2 style={{ fontSize: '1rem', fontWeight: '900', textTransform: 'uppercase', color: 'var(--primary)' }}>TRAINER ASSIGNED</h2>
+                            <h2 style={{ fontSize: '1rem', fontWeight: '900', textTransform: 'uppercase', color: 'var(--primary)' }}>{activeWorkout.createdBy === 'MASTER' ? 'MASTER ASSIGNED' : 'TRAINER ASSIGNED'}</h2>
                             <p style={{ fontSize: '1.2rem', fontWeight: '900', margin: 0 }}>{activeWorkout.name || activeWorkout.routineName}</p>
                         </div>
                     </div>
@@ -265,10 +265,10 @@ const AssignedWorkoutRunner = () => {
                                 <div className="glass-card" style={{ padding: '1rem' }}><p style={{ fontSize: '0.7rem' }}>VOLUME</p><h4>{summary.totalVolume} KG</h4></div>
                             </div>
                             <div style={{ marginBottom: '2rem' }}>
-                                <label style={{ fontSize: '0.8rem', fontWeight: '700', display: 'block', marginBottom: '0.5rem' }}>FEEDBACK FOR TRAINER</label>
-                                <textarea className="input-field" style={{ minHeight: '100px' }} placeholder="Let your trainer know how it went..." value={summary.notes} onChange={e => setSummary({ ...summary, notes: e.target.value })} />
+                                <label style={{ fontSize: '0.8rem', fontWeight: '700', display: 'block', marginBottom: '0.5rem' }}>FEEDBACK FOR {activeWorkout.createdBy === 'MASTER' ? 'MASTER' : 'TRAINER'}</label>
+                                <textarea className="input-field" style={{ minHeight: '100px' }} placeholder={`Let your ${activeWorkout.createdBy === 'MASTER' ? 'master' : 'trainer'} know how it went...`} value={summary.notes} onChange={e => setSummary({ ...summary, notes: e.target.value })} />
                             </div>
-                            <button onClick={finishFinal} className="btn-primary" style={{ width: '100%', padding: '1.25rem' }}>SUBMIT TO TRAINER</button>
+                            <button onClick={finishFinal} className="btn-primary" style={{ width: '100%', padding: '1.25rem' }}>SUBMIT TO {activeWorkout.createdBy === 'MASTER' ? 'MASTER' : 'TRAINER'}</button>
                         </motion.div>
                     </div>
                 )}

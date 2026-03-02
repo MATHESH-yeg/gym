@@ -41,7 +41,7 @@ const MemberWorkoutPlans = lazy(() => import('./pages/Member/Workout/WorkoutPlan
 const MemberCreatePlan = lazy(() => import('./pages/Member/Workout/CreatePlan'));
 const MemberChat = lazy(() => import('./pages/Member/Chat/Chat'));
 const MemberDietPlan = lazy(() => import('./pages/Member/Diet/DietPlan'));
-const MemberAttendance = lazy(() => import('./pages/Member/Attendance/Attendance'));
+const MemberReminders = lazy(() => import('./pages/Member/Reminders/Reminders'));
 const MemberStreaks = lazy(() => import('./pages/Member/Streaks/Streaks'));
 const MemberRecords = lazy(() => import('./pages/Member/Progress/Progress')); // Renamed/Refactored
 const MemberWorkoutRecords = lazy(() => import('./pages/Member/WorkoutRecords/WorkoutRecords'));
@@ -51,6 +51,11 @@ const MemberMembership = lazy(() => import('./pages/Member/Membership/Membership
 const MemberSettings = lazy(() => import('./pages/Member/Settings/Settings'));
 
 const TrainerDashboard = lazy(() => import('./pages/Trainer/Dashboard/Dashboard'));
+const TrainerMembers = lazy(() => import('./pages/Trainer/Members/Members'));
+const TrainerDietPlans = lazy(() => import('./pages/Trainer/DietPlans/DietPlans'));
+const TrainerChats = lazy(() => import('./pages/Trainer/Chat/TrainerChat'));
+const TrainerWorkoutPlans = lazy(() => import('./pages/Trainer/WorkoutPlans/WorkoutPlans'));
+const TrainerSettings = lazy(() => import('./pages/Trainer/Settings/Settings'));
 
 const ProtectedRoute = ({ children, role, allowExpired = false }) => {
   const { user, loading } = useAuth();
@@ -125,7 +130,7 @@ const App = () => {
                 <Route path="/member/workout-plans/create" element={<ProtectedRoute role="MEMBER"><MemberCreatePlan /></ProtectedRoute>} />
                 <Route path="/member/chat" element={<ProtectedRoute role="MEMBER"><MemberChat /></ProtectedRoute>} />
                 <Route path="/member/diet-plan" element={<ProtectedRoute role="MEMBER"><MemberDietPlan /></ProtectedRoute>} />
-                <Route path="/member/attendance" element={<ProtectedRoute role="MEMBER"><MemberAttendance /></ProtectedRoute>} />
+                <Route path="/member/reminders" element={<ProtectedRoute role="MEMBER"><MemberReminders /></ProtectedRoute>} />
                 <Route path="/member/streaks" element={<ProtectedRoute role="MEMBER"><MemberStreaks /></ProtectedRoute>} />
                 <Route path="/member/records" element={<ProtectedRoute role="MEMBER"><MemberRecords /></ProtectedRoute>} />
                 <Route path="/member/workout-records" element={<ProtectedRoute role="MEMBER"><MemberWorkoutRecords /></ProtectedRoute>} />
@@ -134,6 +139,12 @@ const App = () => {
 
                 {/* Trainer Routes */}
                 <Route path="/trainer" element={<ProtectedRoute role="TRAINER"><TrainerDashboard /></ProtectedRoute>} />
+                <Route path="/trainer/members" element={<ProtectedRoute role="TRAINER"><TrainerMembers /></ProtectedRoute>} />
+                <Route path="/trainer/members/:id" element={<ProtectedRoute role="TRAINER"><MasterMemberDetail /></ProtectedRoute>} />
+                <Route path="/trainer/diet-plans" element={<ProtectedRoute role="TRAINER"><TrainerDietPlans /></ProtectedRoute>} />
+                <Route path="/trainer/workout-plans" element={<ProtectedRoute role="TRAINER"><TrainerWorkoutPlans /></ProtectedRoute>} />
+                <Route path="/trainer/chats" element={<ProtectedRoute role="TRAINER"><TrainerChats /></ProtectedRoute>} />
+                <Route path="/trainer/settings" element={<ProtectedRoute role="TRAINER"><TrainerSettings /></ProtectedRoute>} />
 
                 {/* Shortcuts with granular Suspense */}
                 <Route

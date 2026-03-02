@@ -29,6 +29,7 @@ export const DataProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [dietPlans, setDietPlans] = useState({});
   const [reminders, setReminders] = useState({});
+  const [notes, setNotes] = useState({});
   const [progress, setProgress] = useState({});
   const [messages, setMessages] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -39,6 +40,7 @@ export const DataProvider = ({ children }) => {
   const [workoutRecords, setWorkoutRecords] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [membershipPlans, setMembershipPlans] = useState([]);
+  const [master, setMaster] = useState(null);
 
   // ✅ one place to clear everything
   const clearAllData = useCallback(() => {
@@ -51,6 +53,7 @@ export const DataProvider = ({ children }) => {
     setNotifications([]);
     setDietPlans({});
     setReminders({});
+    setNotes({});
     setProgress({});
     setMessages([]);
     setAnnouncements([]);
@@ -61,6 +64,7 @@ export const DataProvider = ({ children }) => {
     setWorkoutRecords([]);
     setTrainers([]);
     setMembershipPlans([]);
+    setMaster(null);
   }, []);
 
   // ✅ Safe refresh that won't flicker during auth hydration
@@ -111,6 +115,10 @@ export const DataProvider = ({ children }) => {
     // Trainers
     setTrainers(filterByGym(DB.getTrainers?.() || []));
 
+    // Master (Gym Owner)
+    const currentMaster = gymUsers.find(u => u.role === 'MASTER');
+    setMaster(currentMaster);
+
     // Announcements
     setAnnouncements(filterByGym(DB.getAnnouncements?.() || []));
 
@@ -135,6 +143,7 @@ export const DataProvider = ({ children }) => {
     setStreaks(filterObjectByKeys(DB.getStreaks?.() || {}));
     setDietPlans(filterObjectByKeys(DB.getDietPlans?.() || {}));
     setReminders(filterObjectByKeys(DB.getReminders?.() || {}));
+    setNotes(filterObjectByKeys(DB.getNotes?.() || {}));
     setProgress(filterObjectByKeys(DB.getProgress?.() || {}));
     setChats(filterObjectByKeys(DB.getChats?.() || {}));
 
@@ -179,18 +188,28 @@ export const DataProvider = ({ children }) => {
     let memberId = member?.id && member.id.trim() !== "" ? member.id : null;
 
     if (!memberId) {
-      let gymPrefix = (user.gymName || user.name || "GYM")
-        .substring(0, 4)
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "");
-      if (gymPrefix.length < 3) gymPrefix = "GYM";
+      const rawName = user.gymName || user.name || "GYM";
+      const words = rawName.split(/[^a-zA-Z0-9]/).filter(w => w.length > 0);
+      let gymPrefix = (words[0] || "GYM").toLowerCase();
 
-      let randomNum = Math.floor(100 + Math.random() * 900);
-      memberId = `${gymPrefix}${randomNum}`;
+      // If name is plural like 'Diamonds', try to make it singular like 'Diamond'
+      if (gymPrefix.endsWith('s') && gymPrefix.length > 3) {
+        gymPrefix = gymPrefix.slice(0, -1);
+      }
+
+      // Sequential generation based on current gym members
+      const gymMembers = users.filter(u => u.gymId === user.gymId && u.role === 'MEMBER');
+      const ids = gymMembers.map(m => {
+        const match = m.id && m.id.match(/\d+$/);
+        return match ? parseInt(match[0]) : 0;
+      });
+      let nextNum = ids.length > 0 ? Math.max(...ids) + 1 : 1;
+
+      memberId = `${gymPrefix}-${nextNum.toString().padStart(3, '0')}`;
 
       while (users.some((u) => u.id === memberId)) {
-        randomNum = Math.floor(100 + Math.random() * 900);
-        memberId = `${gymPrefix}${randomNum}`;
+        nextNum++;
+        memberId = `${gymPrefix}${nextNum.toString().padStart(3, '0')}`;
       }
     } else {
       if (users.some((u) => u.id === memberId)) {
@@ -222,7 +241,9 @@ export const DataProvider = ({ children }) => {
 
   const updateMember = (id, updates) => {
     const users = DB.getUsers?.() || [];
-    const newUsers = users.map((u) => (u.id === id ? { ...u, ...updates } : u));
+    const newUsers = users.map((u) =>
+      (u.id && id && u.id.toLowerCase() === id.toLowerCase()) ? { ...u, ...updates } : u
+    );
     DB.saveUsers?.(newUsers);
     refreshData();
   };
@@ -469,7 +490,7 @@ export const DataProvider = ({ children }) => {
     const current = DB.getDietPlans?.() || {};
     if (!current[memberId]) current[memberId] = [];
 
-    const newPlan = { ...plan, id: "DIET" + Date.now(), gymId: user.gymId };
+    const newPlan = { ...plan, id: "DIET" + Date.now(), gymId: user.gymId, createdBy: plan.createdBy || user.role };
     current[memberId].push(newPlan);
 
     DB.saveDietPlans?.(current);
@@ -792,6 +813,52 @@ export const DataProvider = ({ children }) => {
     setWorkoutRecords(newRecords.filter((r) => r.gymId === user.gymId));
   };
 
+  const saveReminder = (userId, reminder) => {
+    const current = DB.getReminders?.() || {};
+    if (!current[userId]) current[userId] = [];
+
+    if (reminder.id) {
+      current[userId] = current[userId].map(r => r.id === reminder.id ? { ...reminder, updatedAt: Date.now() } : r);
+    } else {
+      current[userId].push({ ...reminder, id: 'REM_' + Date.now(), createdAt: Date.now() });
+    }
+
+    DB.saveReminders?.(current);
+    refreshData();
+  };
+
+  const deleteReminder = (userId, reminderId) => {
+    const current = DB.getReminders?.() || {};
+    if (current[userId]) {
+      current[userId] = current[userId].filter(r => r.id !== reminderId);
+      DB.saveReminders?.(current);
+      refreshData();
+    }
+  };
+
+  const saveNote = (userId, note) => {
+    const current = DB.getNotes?.() || {};
+    if (!current[userId]) current[userId] = [];
+
+    if (note.id) {
+      current[userId] = current[userId].map(n => n.id === note.id ? { ...note, updatedAt: Date.now() } : n);
+    } else {
+      current[userId].push({ ...note, id: 'NOTE_' + Date.now(), createdAt: Date.now() });
+    }
+
+    DB.saveNotes?.(current);
+    refreshData();
+  };
+
+  const deleteNote = (userId, noteId) => {
+    const current = DB.getNotes?.() || {};
+    if (current[userId]) {
+      current[userId] = current[userId].filter(n => n.id !== noteId);
+      DB.saveNotes?.(current);
+      refreshData();
+    }
+  };
+
   // ✅ Memoize provider value to avoid extra renders
   const value = useMemo(
     () => ({
@@ -856,6 +923,11 @@ export const DataProvider = ({ children }) => {
       saveMembershipPlan,
       deleteMembershipPlan,
       updateWorkoutRecord,
+      saveReminder,
+      deleteReminder,
+      saveNote,
+      deleteNote,
+      master,
     }),
     [
       programs,
@@ -877,6 +949,8 @@ export const DataProvider = ({ children }) => {
       workoutRecords,
       trainers,
       membershipPlans,
+      master,
+      notes,
       refreshData,
     ]
   );

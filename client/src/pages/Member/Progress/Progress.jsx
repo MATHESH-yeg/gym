@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
 import {
-    Calendar, ChevronLeft, ChevronRight, Filter, Download, Share2,
+    Calendar, ChevronLeft, ChevronRight, Filter, Download,
     CheckCircle, XCircle, Moon, X, Trophy, Activity, TrendingUp,
     Dumbbell, Clock, User, List, BarChart2, Search
 } from 'lucide-react';
@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const Records = () => {
     const { user } = useAuth();
-    const { workoutRecords, attendance, members } = useData();
+    const { workoutRecords = [], attendance = {}, members = [] } = useData();
 
     // State Management
     const [activeTab, setActiveTab] = useState('weekly');
@@ -87,9 +87,6 @@ const Records = () => {
         window.print();
     };
 
-    const handleShare = () => {
-        alert('Share functionality - Coming soon!');
-    };
 
     // ============= WEEKLY PROGRESS VIEW =============
     const WeeklyView = () => {
@@ -627,9 +624,6 @@ const Records = () => {
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <button className="btn-outline" onClick={() => setShowFilters(!showFilters)}>
                             <Filter size={18} /> Filters
-                        </button>
-                        <button className="btn-outline" onClick={handleShare}>
-                            <Share2 size={18} /> Share
                         </button>
                         <button className="btn-primary" onClick={handleExport}>
                             <Download size={18} /> Export

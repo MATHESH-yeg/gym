@@ -8,7 +8,7 @@ import {
 
 const Settings = () => {
     const { user } = useAuth();
-    const { updateMember, settings, saveSettings, members, payments } = useData();
+    const { updateMember, settings, saveSettings, members, payments, master, addNotification } = useData();
 
     // Get live member data or fallback to auth user
     const memberData = members.find(m => m.id === user.id) || user;
@@ -35,8 +35,18 @@ const Settings = () => {
     const handleSaveProfile = () => {
         updateMember(user.id, formData);
         setIsEditing(false);
-        // Alert handled by system or context usually, but simple alert here
-        alert('Profile updated successfully!');
+
+        // Notify Gym Master
+        if (master && master.id) {
+            addNotification(master.id, `Member ${formData.name || user.name} has updated their Basic Information and Physical Goals.`);
+        }
+
+        // Notify Assigned Trainer
+        if (formData.trainerId) {
+            addNotification(formData.trainerId, `Your assigned member ${formData.name || user.name} has updated their Basic Information and Physical Goals.`);
+        }
+
+        alert('Profile updated successfully! Your Gym Master and Trainer have been notified.');
     };
 
     const handleImageUpload = (e) => {

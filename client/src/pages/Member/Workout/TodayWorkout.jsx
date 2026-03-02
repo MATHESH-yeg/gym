@@ -93,7 +93,7 @@ const TodayWorkout = () => {
                 {/* Typography */}
                 <h1 style={{ fontSize: '2.5rem', fontWeight: '950', letterSpacing: '-0.02em', marginBottom: '1rem', color: 'white' }}>FIND WORKOUT</h1>
                 <p style={{ color: 'var(--muted-foreground)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '2.5rem', padding: '0 1rem' }}>
-                    Enter the unique code assigned by your trainer to access today's routine.
+                    Enter the unique code assigned by your master or trainer to access today's routine.
                 </p>
 
                 {/* Input Section */}

@@ -19,7 +19,8 @@ const STORAGE_KEYS = {
   WORKOUT_PLANS: 'workoutPlans',
   WORKOUT_RECORDS: 'workoutRecords',
   TRAINERS: 'oliva_trainers',
-  MEMBERSHIP_PLANS: 'oliva_membership_plans'
+  MEMBERSHIP_PLANS: 'oliva_membership_plans',
+  NOTES: 'oliva_notes'
 };
 
 const getFromStorage = (key, defaultValue = []) => {
@@ -159,6 +160,10 @@ export const DB = {
     }
   ]),
   saveMembershipPlans: (data) => saveToStorage(STORAGE_KEYS.MEMBERSHIP_PLANS, data),
+
+  // Notes
+  getNotes: () => getFromStorage(STORAGE_KEYS.NOTES, {}),
+  saveNotes: (data) => saveToStorage(STORAGE_KEYS.NOTES, data),
 };
 
 export const exportData = () => {

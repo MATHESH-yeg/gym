@@ -21,9 +21,15 @@ export const AuthProvider = ({ children }) => {
       const savedUser = JSON.parse(savedUserStr);
 
       // Refresh from DB (so gymId/status/subscription changes are reflected)
-      const users = DB.getUsers?.() || [];
-      const freshUser =
-        users.find(u => u.id === savedUser.id && u.role === savedUser.role) || savedUser;
+      let freshUser = null;
+      if (savedUser.role === 'TRAINER') {
+        const trainers = DB.getTrainers?.() || [];
+        freshUser = trainers.find(t => t.id === savedUser.id) || savedUser;
+        if (freshUser) freshUser.role = 'TRAINER';
+      } else {
+        const users = DB.getUsers?.() || [];
+        freshUser = users.find(u => u.id === savedUser.id && u.role === savedUser.role) || savedUser;
+      }
 
       setUser(freshUser);
       localStorage.setItem('oliva_auth_user', JSON.stringify(freshUser));
@@ -37,21 +43,51 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback((id, role, extraData = {}) => {
-    const users = DB.getUsers?.() || [];
     console.log('Logging in:', id, role, extraData);
+    let foundUser = null;
 
-    const foundUser = users.find(u => u.id === id && u.role === role);
+    if (role === 'TRAINER') {
+      const trainers = DB.getTrainers?.() || [];
+      // Search in trainers list by code OR id (case-insensitive for code)
+      foundUser = trainers.find(t =>
+        (t.code && t.code.toUpperCase() === id.toUpperCase()) ||
+        (t.id && t.id.toUpperCase() === id.toUpperCase())
+      );
+
+      if (foundUser) {
+        foundUser = { ...foundUser, role: 'TRAINER' };
+      } else {
+        // Fallback: search in general users list
+        const users = DB.getUsers?.() || [];
+        foundUser = users.find(u =>
+          u.role === 'TRAINER' &&
+          (u.id.toUpperCase() === id.toUpperCase() || (u.trainerCode && u.trainerCode.toUpperCase() === id.toUpperCase()))
+        );
+      }
+    } else {
+      const users = DB.getUsers?.() || [];
+      foundUser = users.find(u => u.id.toUpperCase() === id.toUpperCase() && u.role === role);
+    }
 
     if (!foundUser) {
       return { success: false, message: 'Invalid Login Code/ID.' };
     }
 
-    // Member name check
-    if (role === 'MEMBER' && extraData?.name) {
+    // Member or Trainer name check (more lenient)
+    if ((role === 'MEMBER' || role === 'TRAINER') && extraData?.name) {
       const dbName = (foundUser.name || '').toLowerCase();
       const inputName = (extraData.name || '').toLowerCase();
-      if (!dbName.includes(inputName) && !inputName.includes(dbName)) {
-        return { success: false, message: 'Name does not match our records for this ID.' };
+
+      // Split into words and check if any word from input is in DB name OR vice versa
+      const dbWords = dbName.split(/\s+/).filter(w => w.length > 0);
+      const inputWords = inputName.split(/\s+/).filter(w => w.length > 0);
+
+      const isMatch = inputWords.some(iw => dbWords.some(dw => dw.includes(iw) || iw.includes(dw))) ||
+        dbName.includes(inputName) ||
+        inputName.includes(dbName);
+
+      if (!isMatch && inputName.length > 0) {
+        return { success: false, message: 'Name does not match our records.' };
       }
     }
 

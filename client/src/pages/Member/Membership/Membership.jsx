@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 
 const Membership = () => {
     const { user } = useAuth();
-    const { members, payments, processMembershipPayment, membershipPlans } = useData();
+    const { members, payments, processMembershipPayment, membershipPlans, addNotification, master } = useData();
 
     const memberData = members.find(m => m.id === user.id) || user;
     const isExpired = memberData.expiryDate ? new Date(memberData.expiryDate) < new Date() : true;
@@ -25,6 +25,17 @@ const Membership = () => {
     const handlePayNow = (plan) => {
         if (window.confirm(`Proceed to pay ₹${plan.price} for the ${plan.name} plan?\n\nThis will extend your membership by ${plan.name}.`)) {
             processMembershipPayment(user.id, plan);
+
+            // Notify Master
+            if (master && master.id) {
+                addNotification(master.id, `Member ${memberData.name} has paid ₹${plan.price} for the ${plan.name} plan.`);
+            }
+
+            // Notify assigned trainer
+            if (memberData.trainerId) {
+                addNotification(memberData.trainerId, `Your assigned member ${memberData.name} has paid ₹${plan.price} for the ${plan.name} plan.`);
+            }
+
             alert('✅ Payment successful! Your membership has been updated.');
         }
     };

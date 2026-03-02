@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../../../context/DataContext';
 import { useAuth } from '../../../context/AuthContext';
 import {
@@ -10,7 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import WorkoutRecords from '../../Member/WorkoutRecords/WorkoutRecords';
 
-const MemberProfileTab = ({ member, payments, onUpdate, user, trainers = [] }) => {
+const MemberProfileTab = ({ member, payments = [], onUpdate, user, trainers = [] }) => {
     const [formData, setFormData] = useState({ ...member });
     const [isEditing, setIsEditing] = useState(false);
 
@@ -25,17 +25,27 @@ const MemberProfileTab = ({ member, payments, onUpdate, user, trainers = [] }) =
     const handleSave = () => {
         onUpdate(member.id, formData);
         setIsEditing(false);
-        // alert('Profile updated!');
+        alert('Profile information updated successfully!');
     };
 
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Image is too large. Please select an image smaller than 2MB.');
+                return;
+            }
             const reader = new FileReader();
             reader.onloadend = () => {
                 handleChange('profileImage', reader.result);
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        if (window.confirm('Are you sure you want to remove the profile picture?')) {
+            handleChange('profileImage', null);
         }
     };
 
@@ -48,6 +58,8 @@ const MemberProfileTab = ({ member, payments, onUpdate, user, trainers = [] }) =
     const lastPayment = payments.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
     const isMaster = user.role === 'MASTER';
+    const isTrainer = user.role === 'TRAINER';
+    const canEdit = isMaster || (isTrainer && member.trainerId === user.id);
 
     return (
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
@@ -58,7 +70,7 @@ const MemberProfileTab = ({ member, payments, onUpdate, user, trainers = [] }) =
                         <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <User size={18} color="var(--primary)" /> Basic Profile Information
                         </h4>
-                        {isMaster && (
+                        {canEdit && (
                             !isEditing ? (
                                 <button onClick={() => setIsEditing(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                     <FileText size={16} /> Edit
@@ -72,19 +84,42 @@ const MemberProfileTab = ({ member, payments, onUpdate, user, trainers = [] }) =
                     </div>
 
                     <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem' }}>
-                        <div style={{ position: 'relative' }}>
-                            <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--surface)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {formData.profileImage ? (
-                                    <img src={formData.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                    <User size={40} color="var(--muted-foreground)" />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--surface)', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {formData.profileImage ? (
+                                        <img src={formData.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <User size={40} color="var(--muted-foreground)" />
+                                    )}
+                                </div>
+                                {isEditing && (
+                                    <label style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary)', borderRadius: '50%', padding: '0.4rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+                                        <Camera size={14} color="black" />
+                                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+                                    </label>
                                 )}
                             </div>
-                            {isEditing && (
-                                <label style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary)', borderRadius: '50%', padding: '0.4rem', cursor: 'pointer' }}>
-                                    <Camera size={14} color="black" />
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-                                </label>
+                            {isEditing && formData.profileImage && (
+                                <button
+                                    onClick={handleRemoveImage}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#ef4444',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        borderRadius: '6px',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                                >
+                                    Remove Photo
+                                </button>
                             )}
                         </div>
                         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -270,12 +305,13 @@ const MemberDetail = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const {
-        members, attendance, progress, payments, dietPlans,
-        todaysWorkout, chats, saveChatMessage, deletePayment,
-        saveWorkoutPlan, assignWorkout, updateMember, trainers
+        members = [], attendance = {}, progress = {}, payments = [], dietPlans = {},
+        todaysWorkout = {}, chats = {}, saveChatMessage, deletePayment,
+        saveWorkoutPlan, assignWorkout, updateMember, trainers = []
     } = useData();
 
-    const [activeTab, setActiveTab] = useState('profile');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'profile');
 
 
 
@@ -321,19 +357,20 @@ const MemberDetail = () => {
         if (!hasExercises) return alert('Please add at least one exercise to the routine.');
 
         const code = 'OLV-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        const role = user?.role === 'TRAINER' ? 'TRAINER' : 'MASTER';
         const newPlan = {
             code,
             name: routineBuilder.planName,
             type: 'multi_day',
             totalDays: routineBuilder.daysCount,
             schedule: routineBuilder.schedule,
-            assignedTo: member.id,
-            createdBy: 'MASTER01',
+            assignedTo: id,
+            createdBy: role,
             createdAt: new Date().toISOString()
         };
 
         saveWorkoutPlan(newPlan);
-        assignWorkout(member.id, { name: routineBuilder.planName, code, schedule: routineBuilder.schedule });
+        assignWorkout(id, { name: routineBuilder.planName, code, schedule: routineBuilder.schedule, createdBy: role });
         alert(`Routine assigned successfully! Code: ${code}`);
     };
 
@@ -342,17 +379,17 @@ const MemberDetail = () => {
         return (
             <div style={{ textAlign: 'center', padding: '5rem' }}>
                 <h2>Member not found</h2>
-                <button className="btn-primary" onClick={() => navigate('/master/members')}>Back to Members</button>
+                <button className="btn-primary" onClick={() => navigate(user?.role === 'TRAINER' ? '/trainer/members' : '/master/members')}>Back to Members</button>
             </div>
         );
     }
 
-    const memberAttendance = attendance[id] || [];
-    const memberProgress = progress[id] || [];
-    const memberPayments = payments.filter(p => p.memberId === id);
-    const memberDiet = (dietPlans[id] || []).slice(-1)[0];
-    const memberTodaysWorkout = todaysWorkout[id] || null;
-    const memberChats = (chats['MASTER01'] && chats['MASTER01'][id]) || [];
+    const memberAttendance = attendance?.[id] || [];
+    const memberProgress = progress?.[id] || [];
+    const memberPayments = (payments || []).filter(p => p.memberId === id);
+    const memberDiet = (dietPlans?.[id] || []).slice(-1)[0];
+    const memberTodaysWorkout = todaysWorkout?.[id] || null;
+    const memberChats = (chats?.[user?.id] && chats?.[user?.id]?.[id]) || [];
 
     const tabs = [
         { id: 'profile', name: 'Profile', icon: User },
@@ -375,7 +412,7 @@ const MemberDetail = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {/* Header */}
             <header style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                <button className="btn-outline" style={{ padding: '0.5rem' }} onClick={() => navigate('/master/members')}>
+                <button className="btn-outline" style={{ padding: '0.5rem' }} onClick={() => navigate(user?.role === 'TRAINER' ? '/trainer/members' : '/master/members')}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -731,7 +768,14 @@ const MemberDetail = () => {
                                                     <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>{p.status || 'paid'}</span>
                                                 </td>
                                                 <td style={{ padding: '0.75rem 0', textAlign: 'right' }}>
-                                                    <button onClick={() => handleDeletePay(p.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                                                    <button
+                                                        onClick={() => navigate(`/master/members/${p.id}`)}
+                                                        style={{ color: 'var(--primary)' }}
+                                                        title="View Profile"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+                                                    <button onClick={() => { setSelectedMember(p); setInitialId(p.id); setIsEditModalOpen(true); }} style={{ color: 'var(--muted-foreground)' }} title="Edit Profile"><Edit size={18} /></button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -754,14 +798,14 @@ const MemberDetail = () => {
                                     ) : (
                                         memberChats.map(msg => (
                                             <div key={msg.id} style={{
-                                                alignSelf: msg.senderId === 'MASTER01' ? 'flex-end' : 'flex-start',
+                                                alignSelf: msg.senderId === user?.id ? 'flex-end' : 'flex-start',
                                                 maxWidth: '80%',
                                                 padding: '0.75rem 1rem',
-                                                borderRadius: msg.senderId === 'MASTER01' ? '12px 12px 0 12px' : '12px 12px 12px 0',
-                                                backgroundColor: msg.senderId === 'MASTER01' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                                                color: msg.senderId === 'MASTER01' ? 'black' : 'white',
+                                                borderRadius: msg.senderId === user?.id ? '12px 12px 0 12px' : '12px 12px 12px 0',
+                                                backgroundColor: msg.senderId === user?.id ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                                color: msg.senderId === user?.id ? 'black' : 'white',
                                                 fontSize: '0.9rem',
-                                                border: msg.senderId === 'MASTER01' ? 'none' : '1px solid var(--border)'
+                                                border: msg.senderId === user?.id ? 'none' : '1px solid var(--border)'
                                             }}>
                                                 {msg.text}
                                                 <p style={{ fontSize: '0.6rem', marginTop: '0.25rem', opacity: 0.7 }}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -775,7 +819,7 @@ const MemberDetail = () => {
                                         placeholder={`Reply to ${member.name}...`}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && e.target.value.trim()) {
-                                                saveChatMessage('MASTER01', id, e.target.value);
+                                                saveChatMessage(user?.id, id, e.target.value);
                                                 e.target.value = '';
                                             }
                                         }}
@@ -783,7 +827,7 @@ const MemberDetail = () => {
                                     <button className="btn-primary" onClick={(e) => {
                                         const input = e.currentTarget.previousSibling;
                                         if (input.value.trim()) {
-                                            saveChatMessage('MASTER01', id, input.value);
+                                            saveChatMessage(user?.id, id, input.value);
                                             input.value = '';
                                         }
                                     }}>Send</button>

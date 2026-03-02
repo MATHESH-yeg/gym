@@ -6,8 +6,11 @@ import { motion } from 'framer-motion';
 const MasterDashboard = () => {
     const { members, payments, attendance, streaks, saveAnnouncement, announcements, todaysWorkout, trainers, saveTrainer } = useData();
 
-    const activeMembers = members.filter(m => m.status === 'active').length;
-    const expiringSoon = members.filter(m => {
+    const safeMembers = members || [];
+    const safeAnnouncements = announcements || [];
+
+    const activeMembers = safeMembers.filter(m => m.status === 'active').length;
+    const expiringSoon = safeMembers.filter(m => {
         if (!m.expiryDate) return false;
         const expiry = new Date(m.expiryDate);
         const diff = expiry - new Date();
@@ -15,9 +18,9 @@ const MasterDashboard = () => {
     }).length;
 
     const stats = [
-        { title: 'Total Members', value: members.length, icon: Users, color: 'var(--primary)' },
+        { title: 'Total Members', value: safeMembers.length, icon: Users, color: 'var(--primary)' },
         { title: 'Active Plans', value: activeMembers, icon: CreditCard, color: '#3b82f6' },
-        { title: 'Gym Attendance', value: Object.values(attendance).flat().filter(a => a.date === new Date().toISOString().split('T')[0]).length, icon: Calendar, color: '#a855f7' },
+        { title: 'Gym Attendance', value: (attendance ? Object.values(attendance).flat().filter(a => a.date === new Date().toISOString().split('T')[0]).length : 0), icon: Calendar, color: '#a855f7' },
         { title: 'Expiring Soon', value: expiringSoon, icon: AlertCircle, color: '#f59e0b' }
     ];
 
@@ -82,13 +85,13 @@ const MasterDashboard = () => {
                     <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
                         <h4 style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--muted-foreground)' }}>Recent Posts</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {announcements.slice(0, 3).map((ann, i) => (
+                            {safeAnnouncements.slice(0, 3).map((ann, i) => (
                                 <div key={ann.id || i} style={{ padding: '0.75rem', backgroundColor: 'var(--muted)', borderRadius: '8px' }}>
                                     <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{ann.title}</p>
                                     <p style={{ color: 'var(--muted-foreground)', fontSize: '0.75rem' }}>{new Date(ann.createdAt).toLocaleDateString()}</p>
                                 </div>
                             ))}
-                            {announcements.length === 0 && (
+                            {safeAnnouncements.length === 0 && (
                                 <div className="empty-state" style={{ padding: '1rem' }}>
                                     <p style={{ fontSize: '0.8rem' }}>No announcements yet.</p>
                                 </div>
@@ -106,7 +109,7 @@ const MasterDashboard = () => {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {members.filter(m => {
+                            {safeMembers.filter(m => {
                                 if (!m.expiryDate) return false;
                                 const exp = new Date(m.expiryDate);
                                 const now = new Date();
@@ -118,7 +121,7 @@ const MasterDashboard = () => {
                                     <p style={{ fontSize: '0.875rem' }}>No plans expiring soon.</p>
                                 </div>
                             ) : (
-                                members.filter(m => {
+                                safeMembers.filter(m => {
                                     if (!m.expiryDate) return false;
                                     const exp = new Date(m.expiryDate);
                                     const now = new Date();

@@ -10,7 +10,7 @@ import {
 
 const Shell = ({ children }) => {
     const { user, logout } = useAuth();
-    const { notifications } = useData();
+    const { notifications = [] } = useData();
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -43,7 +43,7 @@ const Shell = ({ children }) => {
         { name: 'Workout Records', icon: ClipboardList, path: '/member/workout-records' },
         { name: 'Diet Plan', icon: Utensils, path: '/member/diet-plan' },
         { name: 'Ask Trainer', icon: MessageSquare, path: '/member/chat' },
-        { name: 'Attendance', icon: Calendar, path: '/member/attendance' },
+        { name: 'Reminders', icon: Bell, path: '/member/reminders' },
         { name: 'Streaks', icon: Flame, path: '/member/streaks' },
         { name: 'Membership', icon: CreditCard, path: '/member/membership' },
         { name: 'Settings', icon: Settings, path: '/member/settings' },
@@ -53,7 +53,8 @@ const Shell = ({ children }) => {
         { name: 'Dashboard', icon: Home, path: '/trainer' },
         { name: 'My Members', icon: Users, path: '/trainer/members' },
         { name: 'Diet Plans', icon: Utensils, path: '/trainer/diet-plans' },
-        { name: 'Messages', icon: MessageSquare, path: '/trainer/chats' },
+        { name: 'Workout Plans', icon: Dumbbell, path: '/trainer/workout-plans' },
+        { name: 'Chats', icon: MessageSquare, path: '/trainer/chats' },
         { name: 'Settings', icon: Settings, path: '/trainer/settings' },
     ];
 
@@ -75,8 +76,8 @@ const Shell = ({ children }) => {
     ] : [
         { name: 'Home', icon: Home, path: '/trainer' },
         { name: 'Members', icon: Users, path: '/trainer/members' },
-        { name: 'Diet', icon: Utensils, path: '/trainer/diet-plans' },
-        { name: 'Messages', icon: MessageSquare, path: '/trainer/chats' },
+        { name: 'Workouts', icon: Dumbbell, path: '/trainer/workout-plans' },
+        { name: 'Chats', icon: MessageSquare, path: '/trainer/chats' },
         { name: 'Profile', icon: Settings, path: '/trainer/settings' },
     ];
 

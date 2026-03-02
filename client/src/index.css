@@ -34,7 +34,7 @@
   --glass-blur: 12px;
 
   /* Spacing */
-  --container-padding: 1rem;
+  --container-padding: 1rem; color: var(--primary);
 }
 
 @media (min-width: 768px) {
@@ -49,7 +49,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   overflow-x: hidden;
@@ -58,7 +59,7 @@ html, body {
 body {
   font-family: var(--font-sans);
   background-color: var(--background);
-  color: #ffffff;
+  color: var(--primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
@@ -100,7 +101,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 1rem; color: var(--primary);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
 }
@@ -127,8 +128,10 @@ body {
 
 /* --- Buttons & Inputs (Mobile-First targets) --- */
 
-.btn-primary, .btn-outline {
-  min-height: 48px; /* High touch target */
+.btn-primary,
+.btn-outline {
+  min-height: 48px;
+  /* High touch target */
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius);
   font-weight: 600;
@@ -151,20 +154,22 @@ body {
 }
 
 .btn-outline {
-  border: 1px solid var(--border);
-  color: var(--secondary-foreground);
+  border: 1px solid var(--primary);
+  color: var(--primary);
 }
 
 .input-field {
   width: 100%;
-  min-height: 48px; /* High touch target */
+  min-height: 48px;
+  /* High touch target */
   background-color: var(--input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.75rem 1rem;
-  color: #ffffff;
+  color: var(--primary);
   outline: none;
-  font-size: 1rem; /* Prevent auto-zoom on iOS */
+  font-size: 1rem;
+  /* Prevent auto-zoom on iOS */
   transition: all 0.2s;
 }
 
@@ -187,15 +192,17 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 600px; /* Force scroll on small screens */
+  min-width: 600px;
+  /* Force scroll on small screens */
 }
 
 @media (max-width: 425px) {
   /* Alternative: Stack tables if requested, but scrollable is more standard for data */
 }
 
-th, td {
-  padding: 1rem;
+th,
+td {
+  padding: 1rem; color: var(--primary);
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
@@ -219,8 +226,13 @@ th {
 }
 
 @keyframes loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .empty-state {
@@ -231,11 +243,22 @@ th {
 
 /* --- Typography --- */
 
-h1 { font-size: clamp(2rem, 8vw, 3rem); }
-h2 { font-size: clamp(1.5rem, 6vw, 2.25rem); }
-h3 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
+h1 {
+  font-size: clamp(2rem, 8vw, 3rem);
+}
 
-.text-muted { color: var(--muted-foreground); font-size: 0.875rem; }
+h2 {
+  font-size: clamp(1.5rem, 6vw, 2.25rem);
+}
+
+h3 {
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
 
 /* --- Mobile Bottom Nav Safe Area --- */
 .safe-bottom {
@@ -246,4 +269,19 @@ h3 { font-size: clamp(1.25rem, 4vw, 1.75rem); }
   .safe-bottom {
     padding-bottom: 0;
   }
+}
+
+/* Force Lucide icons to inherit text color if not explicitly set */
+svg {
+  color: inherit;
+}
+
+button:not(.btn-primary) svg,
+.premium-card svg,
+.btn-outline {
+  color: var(--primary) !important;
+}
+
+.input-field {
+  color: var(--primary) !important;
 }
