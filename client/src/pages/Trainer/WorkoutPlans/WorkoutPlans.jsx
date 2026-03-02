@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
-import { Plus, Search, Dumbbell, Edit, Trash2, Target, X } from 'lucide-react';
+import { Plus, Search, Dumbbell, Edit, Trash2, Target, X, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const TrainerWorkoutPlans = () => {
     const { user } = useAuth();
-    const { members, assignWorkout } = useData();
+    const { members, assignWorkout, workoutPlans } = useData();
 
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMember, setSelectedMember] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
+    const [workoutCode, setWorkoutCode] = useState('');
 
     // Routine Builder State
     const [routineBuilder, setRoutineBuilder] = useState({
@@ -75,6 +77,24 @@ const TrainerWorkoutPlans = () => {
         alert(`Workout schedule assigned to ${selectedMember.name}`);
     };
 
+    const handleAssignByCode = () => {
+        if (!selectedMember || !workoutCode) return;
+        const plan = workoutPlans.find(p => p.code === workoutCode.toUpperCase());
+        if (!plan) return alert('Invalid workout code. Please check and try again.');
+
+        assignWorkout(selectedMember.id, {
+            name: plan.name,
+            code: plan.code,
+            schedule: plan.schedule,
+            assignedBy: user.id,
+            date: new Date().toISOString()
+        });
+
+        setIsCodeModalOpen(false);
+        setWorkoutCode('');
+        alert(`Workout '${plan.name}' assigned to ${selectedMember.name}`);
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -130,29 +150,41 @@ const TrainerWorkoutPlans = () => {
                                         {member.assignedProgram?.code || '-'}
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                        <button
-                                            className="btn-primary"
-                                            style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}
-                                            onClick={() => {
-                                                setSelectedMember(member);
-                                                if (member.assignedProgram) {
-                                                    setRoutineBuilder({
-                                                        planName: member.assignedProgram.name,
-                                                        daysCount: member.assignedProgram.schedule.length,
-                                                        schedule: member.assignedProgram.schedule
-                                                    });
-                                                } else {
-                                                    setRoutineBuilder({
-                                                        planName: 'New Workout Schedule',
-                                                        daysCount: 4,
-                                                        schedule: Array(4).fill().map((_, i) => ({ day: i + 1, focus: '', exercises: [] }))
-                                                    });
-                                                }
-                                                setIsModalOpen(true);
-                                            }}
-                                        >
-                                            <Plus size={14} /> {member.assignedProgram ? 'Update Schedule' : 'Assign Schedule'}
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                            <button
+                                                className="btn-outline"
+                                                style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}
+                                                onClick={() => {
+                                                    setSelectedMember(member);
+                                                    setIsCodeModalOpen(true);
+                                                }}
+                                            >
+                                                <Code size={14} /> Assign Code
+                                            </button>
+                                            <button
+                                                className="btn-primary"
+                                                style={{ padding: '0.5rem 1rem', fontSize: '0.75rem' }}
+                                                onClick={() => {
+                                                    setSelectedMember(member);
+                                                    if (member.assignedProgram && member.assignedProgram.schedule) {
+                                                        setRoutineBuilder({
+                                                            planName: member.assignedProgram.name,
+                                                            daysCount: member.assignedProgram.schedule.length,
+                                                            schedule: member.assignedProgram.schedule
+                                                        });
+                                                    } else {
+                                                        setRoutineBuilder({
+                                                            planName: 'New Workout Schedule',
+                                                            daysCount: 4,
+                                                            schedule: Array(4).fill().map((_, i) => ({ day: i + 1, focus: '', exercises: [] }))
+                                                        });
+                                                    }
+                                                    setIsModalOpen(true);
+                                                }}
+                                            >
+                                                <Plus size={14} /> {member.assignedProgram ? 'Update Schedule' : 'Assign Schedule'}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -162,6 +194,37 @@ const TrainerWorkoutPlans = () => {
             </div>
 
             <AnimatePresence>
+                {isCodeModalOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="premium-card" style={{ width: '100%', maxWidth: '400px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Assign Workout via Code</h3>
+                                <button onClick={() => setIsCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Entering a unique plan code will automatically assign that program to <strong>{selectedMember?.name}</strong>.</p>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Plan Code</label>
+                                    <input
+                                        className="input-field"
+                                        style={{ textAlign: 'center', fontSize: '1.25rem', letterSpacing: '0.1em', fontWeight: 'bold' }}
+                                        placeholder="PLN-XXXX"
+                                        value={workoutCode}
+                                        onChange={e => setWorkoutCode(e.target.value.toUpperCase())}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button className="btn-outline" style={{ flex: 1 }} onClick={() => setIsCodeModalOpen(false)}>Cancel</button>
+                                    <button className="btn-primary" style={{ flex: 1 }} onClick={handleAssignByCode}>Assign</button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
                 {isModalOpen && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="premium-card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -183,6 +246,39 @@ const TrainerWorkoutPlans = () => {
                                         <select className="input-field" value={routineBuilder.daysCount} onChange={e => updateDaysCount(e.target.value)}>
                                             {[1, 2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n} Days</option>)}
                                         </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ backgroundColor: 'rgba(132, 204, 22, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px dashed var(--primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary)' }}>Quick Load via Code</h4>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>Instantly fill this builder using a workout plan code.</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input
+                                            className="input-field"
+                                            style={{ width: '120px', padding: '0.4rem', textAlign: 'center', fontSize: '0.8rem' }}
+                                            placeholder="PLN-XXXX"
+                                            value={workoutCode}
+                                            onChange={e => setWorkoutCode(e.target.value.toUpperCase())}
+                                        />
+                                        <button
+                                            className="btn-primary"
+                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                                            onClick={() => {
+                                                const plan = workoutPlans.find(p => p.code === workoutCode.toUpperCase());
+                                                if (!plan) return alert('Invalid code');
+                                                setRoutineBuilder({
+                                                    planName: plan.name,
+                                                    daysCount: plan.schedule.length,
+                                                    schedule: plan.schedule
+                                                });
+                                                setWorkoutCode('');
+                                                alert(`Plan '${plan.name}' loaded!`);
+                                            }}
+                                        >
+                                            Load
+                                        </button>
                                     </div>
                                 </div>
 

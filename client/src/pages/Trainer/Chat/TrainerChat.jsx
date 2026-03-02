@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
 import { MessageSquare, Send, Search, MoreVertical, Star, ShieldCheck } from 'lucide-react';
 
 const TrainerChat = () => {
     const { user } = useAuth();
-    const { members, master, chats, saveChatMessage } = useData();
+    const { members, master, chats, saveChatMessage, markMessagesAsSeen } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedParticipant, setSelectedParticipant] = useState(null);
     const [messageText, setMessageText] = useState('');
+    const chatEndRef = useRef(null);
+
+    const scrollToBottom = () => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const activeConversation = selectedParticipant ? (chats[user.id]?.[selectedParticipant.id] || []) : [];
+
+    useEffect(() => {
+        scrollToBottom();
+        // Mark as seen when conversation is active
+        if (selectedParticipant?.id && user?.id) {
+            markMessagesAsSeen(user.id, selectedParticipant.id);
+        }
+    }, [activeConversation, selectedParticipant?.id, user?.id]);
 
     const assignedMembers = members.filter(m => m.trainerId === user.id);
     const participants = [];
@@ -27,8 +42,6 @@ const TrainerChat = () => {
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const activeConversation = selectedParticipant ? (chats[user.id]?.[selectedParticipant.id] || []) : [];
 
     const handleSendMessage = (e) => {
         if (e) e.preventDefault();
@@ -97,12 +110,27 @@ const TrainerChat = () => {
                                             {participant.category === 'Master' ? <ShieldCheck size={20} /> : participant.name.charAt(0)}
                                         </div>
                                     </div>
-                                    <div style={{ flexGrow: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <p style={{ fontWeight: '600', fontSize: '0.95rem', margin: 0 }}>{participant.name}</p>
-                                            <p style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', margin: 0 }}>{participant.category}</p>
+                                    <div style={{ flexGrow: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <p style={{ fontWeight: '600', fontSize: '0.95rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{participant.name}</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                {(() => {
+                                                    const unread = (chats[user.id]?.[participant.id] || []).filter(msg => msg.senderId === participant.id && !msg.seen).length;
+                                                    return unread > 0 && selectedParticipant?.id !== participant.id ? (
+                                                        <span style={{
+                                                            backgroundColor: 'var(--primary)',
+                                                            color: 'black',
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: '900',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '10px'
+                                                        }}>{unread}</span>
+                                                    ) : null;
+                                                })()}
+                                                <p style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', margin: 0 }}>{participant.category}</p>
+                                            </div>
                                         </div>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', margin: '0.2rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '150px' }}>
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', margin: '0.2rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {chats[user.id]?.[participant.id]?.slice(-1)[0]?.text || `Start chatting with ${participant.name.split(' ')[0]}`}
                                         </p>
                                     </div>
@@ -165,12 +193,18 @@ const TrainerChat = () => {
                                             }}>
                                                 {msg.text}
                                             </div>
-                                            <p style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', marginTop: '0.25rem', textAlign: msg.senderId === user.id ? 'right' : 'left' }}>
-                                                {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                            </p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.25rem', justifyContent: msg.senderId === user.id ? 'flex-end' : 'flex-start' }}>
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)' }}>
+                                                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                                </span>
+                                                {msg.senderId === user.id && msg.seen && (
+                                                    <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '800' }}>• Seen</span>
+                                                )}
+                                            </div>
                                         </div>
                                     ))
                                 )}
+                                <div ref={chatEndRef} />
                             </div>
 
                             {/* Chat Input */}
@@ -206,4 +240,3 @@ const TrainerChat = () => {
 };
 
 export default TrainerChat;
-

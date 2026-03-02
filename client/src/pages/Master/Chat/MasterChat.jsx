@@ -5,7 +5,7 @@ import { Send, MessageSquare, User, Search, ChevronRight, Edit2, Trash2, X, Chec
 
 const MasterChat = () => {
     const { user } = useAuth();
-    const { members, chats, saveChatMessage, updateChatMessage, deleteChatMessage } = useData();
+    const { members, chats, saveChatMessage, updateChatMessage, deleteChatMessage, markMessagesAsSeen } = useData();
     const [selectedMemberId, setSelectedMemberId] = useState(null);
     const [newMessage, setNewMessage] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -37,7 +37,11 @@ const MasterChat = () => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [currentMessages, selectedMemberId, editingMsgId]);
+        // Mark as seen when conversation is active
+        if (selectedMemberId && user?.id) {
+            markMessagesAsSeen(user.id, selectedMemberId);
+        }
+    }, [currentMessages, selectedMemberId, editingMsgId, user?.id]);
 
     const handleSendMessage = (e) => {
         e.preventDefault();
@@ -118,6 +122,27 @@ const MasterChat = () => {
                                         {trainerChats[m.id]?.slice(-1)[0]?.text || 'No messages'}
                                     </p>
                                 </div>
+                                {(() => {
+                                    const unreadCount = (trainerChats[m.id] || []).filter(msg => msg.senderId === m.id && !msg.seen).length;
+                                    return unreadCount > 0 && selectedMemberId !== m.id ? (
+                                        <div style={{
+                                            backgroundColor: 'var(--primary)',
+                                            color: 'black',
+                                            fontSize: '0.65rem',
+                                            fontWeight: '900',
+                                            minWidth: '18px',
+                                            height: '18px',
+                                            borderRadius: '9px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '0 4px',
+                                            marginRight: '4px'
+                                        }}>
+                                            {unreadCount}
+                                        </div>
+                                    ) : null;
+                                })()}
                                 <ChevronRight size={14} color="var(--muted-foreground)" />
                             </button>
                         ))
@@ -217,9 +242,14 @@ const MasterChat = () => {
                                                 </>
                                             )}
                                         </div>
-                                        <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', marginTop: '0.25rem' }}>
-                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)' }}>
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            {msg.senderId === user.id && msg.seen && (
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '800' }}>• Seen</span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}

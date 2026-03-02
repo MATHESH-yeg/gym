@@ -15,13 +15,13 @@ const CreatePlan = () => {
 
     // Exercise Builder State
     const [exName, setExName] = useState('');
-    const [sets, setSets] = useState([{ id: Date.now(), reps: 10, weight: 0, rest: 60 }]);
+    const [sets, setSets] = useState([{ id: Date.now(), reps: '', weight: '', rest: '' }]);
 
     // Final Composition
     const [exercises, setExercises] = useState(planToEdit?.exercises || []);
 
     const addSet = () => {
-        setSets([...sets, { id: Date.now(), reps: 10, weight: 0, rest: 60 }]);
+        setSets([...sets, { id: Date.now(), reps: '', weight: '', rest: '' }]);
     };
 
     const updateSet = (id, field, value) => {
@@ -46,13 +46,13 @@ const CreatePlan = () => {
                 id: 'SET_' + Math.random().toString(36).substr(2, 9),
                 reps: parseInt(s.reps) || 0,
                 weight: parseFloat(s.weight) || 0,
-                restTime: parseInt(s.rest) || 60
+                restTime: parseInt(s.rest) || 0
             }))
         };
         setExercises([...exercises, newEx]);
         // Reset builder
         setExName('');
-        setSets([{ id: Date.now(), reps: 10, weight: 0, rest: 60 }]);
+        setSets([{ id: Date.now(), reps: '', weight: '', rest: '' }]);
     };
 
     const handleSavePlan = () => {
@@ -129,6 +129,11 @@ const CreatePlan = () => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', paddingLeft: '40px', paddingRight: '40px' }}>
+                        <div style={{ flex: 1, color: '#BEFF00', fontSize: '0.7rem', fontWeight: '900', textAlign: 'center' }}>REPS</div>
+                        <div style={{ flex: 1, color: '#BEFF00', fontSize: '0.7rem', fontWeight: '900', textAlign: 'center' }}>WEIGHT (KG)</div>
+                        <div style={{ flex: 1, color: '#BEFF00', fontSize: '0.7rem', fontWeight: '900', textAlign: 'center' }}>TIMER (S)</div>
+                    </div>
                     {sets.map((set, index) => (
                         <div key={set.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <span style={{ fontWeight: '900', color: 'var(--muted-foreground)', width: '20px' }}>#{index + 1}</span>
@@ -139,7 +144,7 @@ const CreatePlan = () => {
                                     style={{ textAlign: 'center' }}
                                     value={set.reps}
                                     onChange={(e) => updateSet(set.id, 'reps', e.target.value)}
-                                    placeholder="Reps"
+                                    placeholder="0"
                                 />
                             </div>
                             <div style={{ flex: 1 }}>
@@ -149,7 +154,7 @@ const CreatePlan = () => {
                                     style={{ textAlign: 'center' }}
                                     value={set.weight}
                                     onChange={(e) => updateSet(set.id, 'weight', e.target.value)}
-                                    placeholder="Weight"
+                                    placeholder="0"
                                 />
                             </div>
                             <div style={{ flex: 1 }}>
@@ -159,7 +164,7 @@ const CreatePlan = () => {
                                     style={{ textAlign: 'center' }}
                                     value={set.rest}
                                     onChange={(e) => updateSet(set.id, 'rest', e.target.value)}
-                                    placeholder="Rest (s)"
+                                    placeholder="0"
                                 />
                             </div>
                             <button onClick={() => removeSet(set.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>

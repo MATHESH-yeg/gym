@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import {
     Home, Users, Dumbbell, Calendar, Flame, CreditCard,
-    BarChart2, Settings, LogOut, Menu, X, Bell, Utensils, ClipboardList, ChevronLeft, MessageSquare, Award
+    BarChart2, Settings, LogOut, Menu, X, Bell, Utensils, ClipboardList, ChevronLeft, MessageSquare, Award, StickyNote
 } from 'lucide-react';
 
 
@@ -44,6 +44,7 @@ const Shell = ({ children }) => {
         { name: 'Diet Plan', icon: Utensils, path: '/member/diet-plan' },
         { name: 'Ask Trainer', icon: MessageSquare, path: '/member/chat' },
         { name: 'Reminders', icon: Bell, path: '/member/reminders' },
+        { name: 'Notes', icon: StickyNote, path: '/member/notes' },
         { name: 'Streaks', icon: Flame, path: '/member/streaks' },
         { name: 'Membership', icon: CreditCard, path: '/member/membership' },
         { name: 'Settings', icon: Settings, path: '/member/settings' },
@@ -53,6 +54,7 @@ const Shell = ({ children }) => {
         { name: 'Dashboard', icon: Home, path: '/trainer' },
         { name: 'My Members', icon: Users, path: '/trainer/members' },
         { name: 'Diet Plans', icon: Utensils, path: '/trainer/diet-plans' },
+        { name: 'My Workout Plans', icon: ClipboardList, path: '/trainer/my-workout-plans' },
         { name: 'Workout Plans', icon: Dumbbell, path: '/trainer/workout-plans' },
         { name: 'Chats', icon: MessageSquare, path: '/trainer/chats' },
         { name: 'Settings', icon: Settings, path: '/trainer/settings' },

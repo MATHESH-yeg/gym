@@ -5,7 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
     User, Dumbbell, Utensils, BarChart2, Calendar,
     CreditCard, MessageSquare, ChevronLeft, Flame, Target, CheckCircle2, Trash2, Plus,
-    Camera, FileText, Download, Save, ClipboardList, Award
+    Camera, FileText, Download, Save, ClipboardList, Award, Eye, Edit, Code
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import WorkoutRecords from '../../Member/WorkoutRecords/WorkoutRecords';
@@ -307,11 +307,12 @@ const MemberDetail = () => {
     const {
         members = [], attendance = {}, progress = {}, payments = [], dietPlans = {},
         todaysWorkout = {}, chats = {}, saveChatMessage, deletePayment,
-        saveWorkoutPlan, assignWorkout, updateMember, trainers = []
+        saveWorkoutPlan, assignWorkout, updateMember, trainers = [], workoutPlans = []
     } = useData();
 
     const location = useLocation();
     const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'profile');
+    const [workoutCode, setWorkoutCode] = useState('');
 
 
 
@@ -398,7 +399,7 @@ const MemberDetail = () => {
         { id: 'diet', name: 'Diet Plan', icon: Utensils },
         { id: 'progress', name: 'Progress', icon: BarChart2 },
         { id: 'attendance', name: 'Attendance', icon: Calendar },
-        { id: 'membership', name: 'Membership', icon: CreditCard },
+        ...(user?.role === 'MASTER' ? [{ id: 'membership', name: 'Membership', icon: CreditCard }] : []),
         { id: 'chat', name: 'Chat', icon: MessageSquare }
     ];
 
@@ -474,8 +475,39 @@ const MemberDetail = () => {
 
                         {activeTab === 'workout' && (
                             <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
                                     <h4>Workout Plan Management</h4>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <Code size={18} color="var(--primary)" />
+                                        <input
+                                            className="input-field"
+                                            style={{ width: '150px', padding: '0.5rem', fontSize: '0.8rem', textAlign: 'center' }}
+                                            placeholder="PLAN CODE"
+                                            value={workoutCode}
+                                            onChange={e => setWorkoutCode(e.target.value.toUpperCase())}
+                                        />
+                                        <button
+                                            className="btn-primary"
+                                            style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                                            onClick={() => {
+                                                if (!workoutCode) return;
+                                                const plan = workoutPlans.find(p => p.code === workoutCode.toUpperCase());
+                                                if (!plan) return alert('Invalid code! No plan found.');
+
+                                                assignWorkout(id, {
+                                                    name: plan.name,
+                                                    code: plan.code,
+                                                    schedule: plan.schedule,
+                                                    assignedBy: user.id,
+                                                    date: new Date().toISOString()
+                                                });
+                                                setWorkoutCode('');
+                                                alert(`Plan '${plan.name}' assigned to member!`);
+                                            }}
+                                        >
+                                            Assign
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="premium-card" style={{ padding: '2rem', border: '1px solid var(--border)' }}>

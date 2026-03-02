@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const MemberChat = () => {
     const { user } = useAuth();
-    const { members, trainers, chats, master, connectToTrainer, saveChatMessage } = useData();
+    const { members, trainers, chats, master, connectToTrainer, saveChatMessage, markMessagesAsSeen } = useData();
     const [trainerCode, setTrainerCode] = useState('');
     const [newMessage, setNewMessage] = useState('');
     const [selectedTarget, setSelectedTarget] = useState('MASTER'); // 'MASTER' or 'TRAINER'
@@ -25,7 +25,11 @@ const MemberChat = () => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [myChats, selectedTarget]);
+        // Mark messages as seen when conversation is active
+        if (activeRecipientId && user?.id) {
+            markMessagesAsSeen(user.id, activeRecipientId);
+        }
+    }, [myChats, selectedTarget, activeRecipientId, user?.id]);
 
     const handleConnect = (e) => {
         e.preventDefault();
@@ -71,45 +75,92 @@ const MemberChat = () => {
                 <header style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: '800' }}>Inbox</h3>
                 </header>
+
+                {/* Trainer Connection Box */}
+                {!trainerId && (
+                    <div style={{
+                        padding: '1.25rem',
+                        borderBottom: '1px solid var(--border)',
+                        background: 'linear-gradient(135deg, rgba(132, 204, 22, 0.08) 0%, transparent 100%)',
+                        borderLeft: '3px solid var(--primary)'
+                    }}>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '800', marginBottom: '0.75rem', color: 'var(--primary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Private Coaching</p>
+                        <form onSubmit={handleConnect} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <input
+                                className="input-field"
+                                placeholder="ENTER TRAINER CODE"
+                                value={trainerCode}
+                                onChange={e => setTrainerCode(e.target.value)}
+                                style={{ fontSize: '0.75rem', padding: '0.6rem', textAlign: 'center', letterSpacing: '0.1em' }}
+                            />
+                            <button className="btn-primary" type="submit" style={{ padding: '0.6rem', fontSize: '0.75rem', width: '100%' }}>Connect Trainer</button>
+                        </form>
+                    </div>
+                )}
+
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {participants.map(p => (
-                        <button
-                            key={p.id}
-                            onClick={() => setSelectedTarget(p.id)}
-                            style={{
-                                width: '100%',
-                                padding: '1.25rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                backgroundColor: selectedTarget === p.id ? 'rgba(132, 204, 22, 0.1)' : 'transparent',
-                                border: 'none',
-                                borderBottom: '1px solid var(--border)',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <div style={{
-                                width: '45px',
-                                height: '45px',
-                                borderRadius: '12px',
-                                backgroundColor: p.connected ? p.color : 'var(--border)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'white',
-                                opacity: p.connected ? 1 : 0.5
-                            }}>
-                                <p.icon size={22} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontWeight: '700', fontSize: '0.95rem', color: selectedTarget === p.id ? 'var(--primary)' : 'white', margin: 0 }}>{p.name}</p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', margin: 0 }}>{p.role}</p>
-                            </div>
-                            <ChevronRight size={14} color="var(--muted-foreground)" />
-                        </button>
-                    ))}
+                    {participants.map(p => {
+                        const targetId = p.id === 'MASTER' ? master?.id : trainerId;
+                        const chatList = (targetId && chats[user?.id] && chats[user?.id][targetId]) || [];
+                        const unreadCount = chatList.filter(msg => msg.senderId === targetId && !msg.seen).length;
+
+                        return (
+                            <button
+                                key={p.id}
+                                onClick={() => setSelectedTarget(p.id)}
+                                style={{
+                                    width: '100%',
+                                    padding: '1.25rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    backgroundColor: selectedTarget === p.id ? 'rgba(132, 204, 22, 0.1)' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: '1px solid var(--border)',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{
+                                    width: '45px',
+                                    height: '45px',
+                                    borderRadius: '12px',
+                                    backgroundColor: p.connected ? p.color : 'var(--border)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    opacity: p.connected ? 1 : 0.5
+                                }}>
+                                    <p.icon size={22} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <p style={{ fontWeight: '700', fontSize: '0.95rem', color: selectedTarget === p.id ? 'var(--primary)' : 'white', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', margin: 0 }}>{p.role}</p>
+                                </div>
+
+                                {unreadCount > 0 && (
+                                    <div style={{
+                                        backgroundColor: 'var(--primary)',
+                                        color: 'black',
+                                        fontSize: '0.7rem',
+                                        fontWeight: '800',
+                                        minWidth: '20px',
+                                        height: '20px',
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '0 6px'
+                                    }}>
+                                        {unreadCount}
+                                    </div>
+                                )}
+                                <ChevronRight size={14} color="var(--muted-foreground)" />
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -117,23 +168,28 @@ const MemberChat = () => {
             <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'rgba(0,0,0,0.1)' }}>
                 {selectedTarget === 'TRAINER' && !trainerId ? (
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center', gap: '2rem' }}>
-                        <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(132, 204, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Terminal size={40} color="var(--primary)" />
+                        <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(132, 204, 22, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                            <ShieldCheck size={40} color="var(--primary)" />
                         </div>
                         <div>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1rem' }}>Connect to Trainer</h2>
-                            <p style={{ color: 'var(--muted-foreground)', maxWidth: '400px', fontSize: '0.9rem' }}>Enter the specific trainer code to start personal coaching and private chat.</p>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: '900', marginBottom: '0.75rem' }}>Private Training</h2>
+                            <p style={{ color: 'var(--muted-foreground)', maxWidth: '400px', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                                Connect with your personal coach to get custom workouts, diet guidance, and 1-on-1 support.
+                            </p>
                         </div>
-                        <form onSubmit={handleConnect} style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '350px' }}>
-                            <input
-                                className="input-field"
-                                placeholder="TRAINER CODE"
-                                value={trainerCode}
-                                onChange={e => setTrainerCode(e.target.value)}
-                                style={{ textAlign: 'center', letterSpacing: '0.2em' }}
-                            />
-                            <button className="btn-primary" type="submit">Connect</button>
-                        </form>
+                        <div style={{ padding: '2rem', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px solid var(--border)', width: '100%', maxWidth: '400px' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', marginBottom: '1.5rem' }}>Enter the unique code provided by your trainer below</p>
+                            <form onSubmit={handleConnect} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <input
+                                    className="input-field"
+                                    placeholder="TRAINER-CODE-001"
+                                    value={trainerCode}
+                                    onChange={e => setTrainerCode(e.target.value)}
+                                    style={{ textAlign: 'center', letterSpacing: '0.2em', fontSize: '1.1rem', padding: '1rem' }}
+                                />
+                                <button className="btn-primary" type="submit" style={{ padding: '1rem', fontWeight: 'bold' }}>Start Coaching Now</button>
+                            </form>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -172,9 +228,14 @@ const MemberChat = () => {
                                         }}>
                                             {msg.text}
                                         </div>
-                                        <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', marginTop: '0.4rem' }}>
-                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)' }}>
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            {msg.senderId === user.id && msg.seen && (
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '700' }}>• Seen</span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}

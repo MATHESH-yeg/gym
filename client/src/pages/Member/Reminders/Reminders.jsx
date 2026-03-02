@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useData } from '../../../context/DataContext';
+import { useLocation } from 'react-router-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, StickyNote, Bell, Trash2, Plus, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Reminders = () => {
     const { user } = useAuth();
+    const location = useLocation();
     const { reminders, notes, saveReminder, deleteReminder, saveNote, deleteNote, addNotification } = useData();
+
+    const getTodayStr = (d = new Date()) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [activeTab, setActiveTab] = useState('reminders'); // 'reminders' or 'notes'
+    const [selectedDate, setSelectedDate] = useState(getTodayStr());
+    const [activeTab, setActiveTab] = useState(location.pathname.includes('notes') ? 'notes' : 'reminders');
+
+    useEffect(() => {
+        setActiveTab(location.pathname.includes('notes') ? 'notes' : 'reminders');
+    }, [location.pathname]);
 
     // Reminder Modal States
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
@@ -28,7 +39,7 @@ const Reminders = () => {
     useEffect(() => {
         const checkReminders = () => {
             const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
+            const todayStr = getTodayStr(now);
             const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
 
             userReminders.forEach(r => {
@@ -352,11 +363,52 @@ const Reminders = () => {
                     </div>
                 </div>
 
-                <div className="premium-card" style={{ background: 'linear-gradient(135deg, rgba(132, 204, 22, 0.1), rgba(0,0,0,0))' }}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '1rem' }}>Motivation</h3>
-                    <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.8)', lineHeight: '1.6', fontStyle: 'italic' }}>
-                        "Success is the sum of small efforts, repeated day in and day out. Use your reminders to stay consistent!"
-                    </p>
+                <div className="premium-card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: '800' }}>Recent Notes</h3>
+                        <button
+                            onClick={() => setActiveTab('notes')}
+                            style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '800', cursor: 'pointer' }}
+                        >
+                            View All
+                        </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {userNotes.length === 0 ? (
+                            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', textAlign: 'center' }}>No notes saved yet.</p>
+                        ) : (
+                            [...userNotes]
+                                .reverse()
+                                .slice(0, 3)
+                                .map(note => (
+                                    <div
+                                        key={note.id}
+                                        onClick={() => setActiveTab('notes')}
+                                        style={{
+                                            padding: '0.75rem',
+                                            borderRadius: '12px',
+                                            backgroundColor: 'rgba(255,255,255,0.02)',
+                                            border: '1px solid var(--border)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <p style={{ fontSize: '0.8rem', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                            {note.text}
+                                        </p>
+                                        <p style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', margin: '0.5rem 0 0' }}>
+                                            {new Date(note.date || note.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                ))
+                        )}
+                        <button
+                            className="btn-outline"
+                            style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', fontSize: '0.8rem' }}
+                            onClick={() => { setActiveTab('notes'); setEditingNoteId(null); setNoteText(''); }}
+                        >
+                            + New Note
+                        </button>
+                    </div>
                 </div>
             </div>
 

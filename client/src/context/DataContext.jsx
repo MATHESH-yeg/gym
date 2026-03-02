@@ -119,8 +119,32 @@ export const DataProvider = ({ children }) => {
     const currentMaster = gymUsers.find(u => u.role === 'MASTER');
     setMaster(currentMaster);
 
-    // Announcements
-    setAnnouncements(filterByGym(DB.getAnnouncements?.() || []));
+    // Announcements (with auto-cleanup for expired items)
+    const rawAnns = DB.getAnnouncements?.() || [];
+    const nowStr = new Date().toISOString();
+    const liveAnns = rawAnns.filter(ann => !ann.expiryDate || ann.expiryDate > nowStr);
+
+    // Persist cleanup if any expired items were removed
+    if (liveAnns.length !== rawAnns.length) {
+      DB.saveAnnouncements?.(liveAnns);
+    }
+
+    const gymAnns = filterByGym(liveAnns);
+    let filteredAnns = gymAnns;
+    if (user.role === 'MEMBER') {
+      filteredAnns = gymAnns.filter(ann =>
+        !ann.createdByRole || ann.createdByRole === 'MASTER' || ann.createdById === user.trainerId
+      );
+    } else if (user.role === 'TRAINER') {
+      filteredAnns = gymAnns.filter(ann =>
+        !ann.createdByRole || ann.createdByRole === 'MASTER' || ann.createdById === user.id
+      );
+    } else if (user.role === 'MASTER') {
+      filteredAnns = gymAnns.filter(ann =>
+        !ann.createdByRole || ann.createdByRole === 'MASTER'
+      );
+    }
+    setAnnouncements(filteredAnns);
 
     // Records
     setWorkoutRecords(filterByGym(DB.getWorkoutRecords?.() || []));
@@ -306,11 +330,11 @@ export const DataProvider = ({ children }) => {
     currentAttendance[memberId] = [...filtered, { date, status }];
 
     DB.saveAttendance?.(currentAttendance);
-    if (status === "present") updateStreak(memberId, date);
+    if (status === "present" || status === "rest") updateStreak(memberId, date, status);
     refreshData();
   };
 
-  const updateStreak = (memberId, date) => {
+  const updateStreak = (memberId, date, status) => {
     const currentStreaks = DB.getStreaks?.() || {};
     const streak = currentStreaks[memberId] || {
       current: 0,
@@ -326,10 +350,15 @@ export const DataProvider = ({ children }) => {
         today.setHours(0, 0, 0, 0) - lastDate.setHours(0, 0, 0, 0)
       );
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) streak.current += 1;
-      else if (diffDays > 1) streak.current = 1;
+
+      if (diffDays === 1) {
+        if (status === "present") streak.current += 1;
+        // else status is "rest", streak.current stays same
+      } else if (diffDays > 1) {
+        streak.current = status === "present" ? 1 : 0;
+      }
     } else {
-      streak.current = 1;
+      streak.current = status === "present" ? 1 : 0;
     }
 
     if (streak.current > streak.best) streak.best = streak.current;
@@ -339,9 +368,12 @@ export const DataProvider = ({ children }) => {
     DB.saveStreaks?.(currentStreaks);
   };
 
-  const saveAnnouncement = (title, message) => {
+  const saveAnnouncement = (title, message, expiryDate = null) => {
     if (authLoading) return;
-    if (!user || !user.gymId) return;
+    if (!user || !user.gymId) {
+      console.warn("⚠️ DataContext: Cannot save announcement. Missing user or gymId.");
+      return;
+    }
 
     const current = DB.getAnnouncements?.() || [];
     const newAnn = {
@@ -349,8 +381,13 @@ export const DataProvider = ({ children }) => {
       title,
       message,
       createdAt: new Date().toISOString(),
+      expiryDate,
       gymId: user.gymId,
+      createdByRole: user.role,
+      createdById: user.id
     };
+
+    console.log("📢 DataContext: Saving new announcement:", newAnn);
     DB.saveAnnouncements?.([newAnn, ...current]);
     refreshData();
   };
@@ -374,6 +411,7 @@ export const DataProvider = ({ children }) => {
       senderId,
       text,
       timestamp: new Date().toISOString(),
+      seen: false
     };
     current[senderId][recipientId].push(newMsg);
 
@@ -417,6 +455,39 @@ export const DataProvider = ({ children }) => {
 
     DB.saveChats?.(current);
     refreshData();
+  };
+
+  const markMessagesAsSeen = (userId, otherId) => {
+    const current = DB.getChats?.() || {};
+    let changed = false;
+
+    // Mark messages received by userId from otherId as seen
+    if (current[userId] && current[userId][otherId]) {
+      current[userId][otherId] = current[userId][otherId].map(msg => {
+        if (msg.senderId === otherId && !msg.seen) {
+          changed = true;
+          return { ...msg, seen: true };
+        }
+        return msg;
+      });
+    }
+
+    // Also mark them in the other person's copy (sender's outbox) 
+    // so they see the "Seen" indicator
+    if (current[otherId] && current[otherId][userId]) {
+      current[otherId][userId] = current[otherId][userId].map(msg => {
+        if (msg.senderId === otherId && !msg.seen) {
+          changed = true;
+          return { ...msg, seen: true }
+        }
+        return msg;
+      });
+    }
+
+    if (changed) {
+      DB.saveChats?.(current);
+      refreshData();
+    }
   };
 
   const deletePayment = (id) => {
@@ -881,6 +952,7 @@ export const DataProvider = ({ children }) => {
       workoutRecords,
       trainers,
       membershipPlans,
+      notes,
 
       refreshData,
       addMember,
@@ -927,6 +999,7 @@ export const DataProvider = ({ children }) => {
       deleteReminder,
       saveNote,
       deleteNote,
+      markMessagesAsSeen,
       master,
     }),
     [

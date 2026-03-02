@@ -57,6 +57,8 @@ const TrainerChats = lazy(() => import('./pages/Trainer/Chat/TrainerChat'));
 const TrainerWorkoutPlans = lazy(() => import('./pages/Trainer/WorkoutPlans/WorkoutPlans'));
 const TrainerSettings = lazy(() => import('./pages/Trainer/Settings/Settings'));
 
+const TrainerMyWorkoutPlans = lazy(() => import('./pages/Trainer/WorkoutPlans/MyWorkoutPlans'));
+
 const ProtectedRoute = ({ children, role, allowExpired = false }) => {
   const { user, loading } = useAuth();
 
@@ -131,6 +133,7 @@ const App = () => {
                 <Route path="/member/chat" element={<ProtectedRoute role="MEMBER"><MemberChat /></ProtectedRoute>} />
                 <Route path="/member/diet-plan" element={<ProtectedRoute role="MEMBER"><MemberDietPlan /></ProtectedRoute>} />
                 <Route path="/member/reminders" element={<ProtectedRoute role="MEMBER"><MemberReminders /></ProtectedRoute>} />
+                <Route path="/member/notes" element={<ProtectedRoute role="MEMBER"><MemberReminders /></ProtectedRoute>} />
                 <Route path="/member/streaks" element={<ProtectedRoute role="MEMBER"><MemberStreaks /></ProtectedRoute>} />
                 <Route path="/member/records" element={<ProtectedRoute role="MEMBER"><MemberRecords /></ProtectedRoute>} />
                 <Route path="/member/workout-records" element={<ProtectedRoute role="MEMBER"><MemberWorkoutRecords /></ProtectedRoute>} />
@@ -142,6 +145,7 @@ const App = () => {
                 <Route path="/trainer/members" element={<ProtectedRoute role="TRAINER"><TrainerMembers /></ProtectedRoute>} />
                 <Route path="/trainer/members/:id" element={<ProtectedRoute role="TRAINER"><MasterMemberDetail /></ProtectedRoute>} />
                 <Route path="/trainer/diet-plans" element={<ProtectedRoute role="TRAINER"><TrainerDietPlans /></ProtectedRoute>} />
+                <Route path="/trainer/my-workout-plans" element={<ProtectedRoute role="TRAINER"><TrainerMyWorkoutPlans /></ProtectedRoute>} />
                 <Route path="/trainer/workout-plans" element={<ProtectedRoute role="TRAINER"><TrainerWorkoutPlans /></ProtectedRoute>} />
                 <Route path="/trainer/chats" element={<ProtectedRoute role="TRAINER"><TrainerChats /></ProtectedRoute>} />
                 <Route path="/trainer/settings" element={<ProtectedRoute role="TRAINER"><TrainerSettings /></ProtectedRoute>} />
