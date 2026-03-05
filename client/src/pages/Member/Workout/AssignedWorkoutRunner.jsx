@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../../../context/DataContext';
 import { useAuth } from '../../../context/AuthContext';
 import {
@@ -11,32 +11,47 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const AssignedWorkoutRunner = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const {
         todaysWorkout, activeWorkout, startWorkout,
-        updateActiveWorkout, finishWorkout, cancelActiveWorkout
+        updateActiveWorkout, finishWorkout, cancelActiveWorkout,
+        attendance
     } = useData();
     const { user } = useAuth();
 
     // 1. Initialize session if not active
     useEffect(() => {
-        const hasData = todaysWorkout?.id || todaysWorkout?.code;
+        // Priority 1: Plan passed via navigation state (from TodayWorkout)
+        const statePlan = location.state?.plan;
+        // Priority 2: Globally assigned workout for the day
+        const globalPlan = todaysWorkout?.id || todaysWorkout?.code ? todaysWorkout : null;
+
+        const planToUse = statePlan || globalPlan;
+
         if (!activeWorkout || activeWorkout.source !== 'ASSIGNED') {
-            if (hasData) {
-                startWorkout({ ...todaysWorkout, source: 'ASSIGNED' });
+            if (planToUse) {
+                console.log('Starting workout with plan:', planToUse);
+                startWorkout({ ...planToUse, source: 'ASSIGNED' });
             } else {
-                // If we are here and have no data, we might be loading or genuinely have nothing
-                // But don't alert yet to avoid annoying the user while things hydrate
+                console.log('No plan found to start');
             }
         }
-    }, [todaysWorkout, activeWorkout, startWorkout]);
+    }, [todaysWorkout, activeWorkout, startWorkout, location.state]);
 
     // 2. Local Session States
-    const [sessionState, setSessionState] = useState('idle'); // idle, running, paused, completed
+    const [sessionState, setSessionState] = useState(activeWorkout?.startTime ? 'running' : 'idle');
     const [elapsed, setElapsed] = useState(0);
     const [activeExerciseIdx, setActiveExerciseIdx] = useState(0);
     const [restTimer, setRestTimer] = useState({ active: false, remaining: 0, initial: 0 });
     const [showFinishModal, setShowFinishModal] = useState(false);
     const [summary, setSummary] = useState({ rating: 5, notes: '' });
+
+    // Sync session state if activeWorkout changes
+    useEffect(() => {
+        if (activeWorkout?.startTime && sessionState === 'idle') {
+            setSessionState('running');
+        }
+    }, [activeWorkout]);
 
     const timerRef = useRef(null);
     const restIntervalRef = useRef(null);
@@ -70,29 +85,48 @@ const AssignedWorkoutRunner = () => {
         return () => clearInterval(restIntervalRef.current);
     }, [restTimer.active]);
 
-    const hasData = todaysWorkout?.id || todaysWorkout?.code;
+    const hasData = todaysWorkout?.id || todaysWorkout?.code || location.state?.plan;
 
     if (!activeWorkout || activeWorkout.source !== 'ASSIGNED') {
-        if (!hasData) return <div className="loading-screen">No assigned workout data found. Please check your code.</div>;
+        if (!hasData) return (
+            <div className="loading-screen" style={{ flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ color: 'var(--muted-foreground)' }}>No assigned workout data found.</div>
+                <button onClick={() => navigate('/member/workout')} className="btn-outline">Go Back</button>
+            </div>
+        );
         return <div className="loading-screen">Preparing Assigned Session...</div>;
     }
 
     const currentEx = activeWorkout?.exercises?.[activeExerciseIdx];
 
     if (!currentEx) {
+        // Attempt to reload exercises if they are missing but schedule exists
+        const totalEx = activeWorkout.exercises?.length || 0;
+        if (totalEx === 0) {
+            return (
+                <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--muted-foreground)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+                    <Dumbbell size={48} style={{ marginBottom: '1.5rem', opacity: 0.5 }} />
+                    <h2 style={{ color: 'white', marginBottom: '1rem' }}>No Exercises Found for Today</h2>
+                    <p style={{ maxWidth: '400px', margin: '0 auto 2rem' }}>This program might have a rest day or hasn't had exercises added for this specific day of the schedule.</p>
+                    <button onClick={() => navigate('/member/workout')} className="btn-primary">Try Another Code</button>
+                </div>
+            );
+        }
         return (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
-                <h2>No exercises found in assigned workout</h2>
-                <button onClick={() => navigate('/member/workout')} className="btn-primary" style={{ marginTop: '1rem' }}>Go Back</button>
+                <h2>Exercise not found</h2>
+                <button onClick={() => setActiveExerciseIdx(0)} className="btn-primary">Restart Session</button>
             </div>
         );
     }
 
-    const totalExercises = activeWorkout.exercises.length;
-    const progressPercent = (activeWorkout.exercises.filter(ex => ex.sets.every(s => s.completed)).length / totalExercises) * 100;
+    const totalExercises = activeWorkout.exercises?.length || 0;
+    const progressPercent = totalExercises > 0
+        ? (activeWorkout.exercises.filter(ex => ex.sets && ex.sets.every(s => s.completed)).length / totalExercises) * 100
+        : 0;
 
     const handleBack = () => {
-        if (sessionState !== 'idle' && !window.confirm('Exit assigned workout? Progress will be lost.')) {
+        if (sessionState !== 'idle' && sessionState !== 'completed' && !window.confirm('Exit assigned workout? Progress will be lost.')) {
             return;
         }
         cancelActiveWorkout();
@@ -100,6 +134,7 @@ const AssignedWorkoutRunner = () => {
     };
 
     const formatTime = (seconds) => {
+        if (typeof seconds !== 'number' || isNaN(seconds)) return "00:00";
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -107,11 +142,14 @@ const AssignedWorkoutRunner = () => {
 
     const handleToggleSet = (exIdx, setIdx) => {
         const updated = { ...activeWorkout };
-        const set = updated.exercises[exIdx].sets[setIdx];
+        const ex = updated.exercises?.[exIdx];
+        if (!ex || !ex.sets?.[setIdx]) return;
+
+        const set = ex.sets[setIdx];
         set.completed = !set.completed;
 
         if (set.completed) {
-            const restValue = parseInt(set.restTime) || 60;
+            const restValue = parseInt(set.restTime) || parseInt(ex.restTime) || 60;
             setRestTimer({ active: true, remaining: restValue, initial: restValue });
         }
         updateActiveWorkout(updated);
@@ -119,8 +157,11 @@ const AssignedWorkoutRunner = () => {
 
     const handleUpdateSet = (exIdx, setIdx, field, value) => {
         const updated = { ...activeWorkout };
-        updated.exercises[exIdx].sets[setIdx][field] = parseInt(value) || 0;
-        updateActiveWorkout(updated);
+        const set = updated.exercises?.[exIdx]?.sets?.[setIdx];
+        if (set) {
+            set[field] = parseInt(value) || 0;
+            updateActiveWorkout(updated);
+        }
     };
 
     const handleStartWorkout = () => {
@@ -133,8 +174,8 @@ const AssignedWorkoutRunner = () => {
 
     const handleComplete = () => {
         setSessionState('paused');
-        const totalVol = activeWorkout.exercises.reduce((v, ex) => {
-            return v + ex.sets.reduce((sv, s) => s.completed ? sv + (s.actualWeight * s.actualReps) : sv, 0);
+        const totalVol = (activeWorkout.exercises || []).reduce((v, ex) => {
+            return v + (ex.sets || []).reduce((sv, s) => s.completed ? sv + ((parseInt(s.actualWeight) || 0) * (parseInt(s.actualReps) || 0)) : sv, 0);
         }, 0);
 
         setShowFinishModal(true);
@@ -184,7 +225,7 @@ const AssignedWorkoutRunner = () => {
                         <span style={{ color: '#BEFF00' }}>{Math.round(progressPercent)}% DONE</span>
                     </div>
                     <div style={{ display: 'flex', gap: '4px', height: '3px', width: '100%' }}>
-                        {activeWorkout.exercises.map((_, idx) => (
+                        {(activeWorkout.exercises || []).map((_, idx) => (
                             <div key={idx} style={{ flex: 1, backgroundColor: idx < activeExerciseIdx ? '#BEFF00' : idx === activeExerciseIdx ? '#fff' : 'rgba(255,255,255,0.1)', borderRadius: '2px' }} />
                         ))}
                     </div>
@@ -200,12 +241,12 @@ const AssignedWorkoutRunner = () => {
                                 <div style={{ display: 'flex', gap: '1.5rem' }}>
                                     <div>
                                         <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', display: 'block' }}>SETS</span>
-                                        <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#BEFF00' }}>{currentEx.sets.length}</span>
+                                        <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#BEFF00' }}>{currentEx.sets?.length || 0}</span>
                                     </div>
                                     <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border)' }} />
                                     <div>
                                         <span style={{ fontSize: '0.65rem', color: 'var(--muted-foreground)', display: 'block' }}>TARGET</span>
-                                        <span style={{ fontSize: '1.1rem', fontWeight: '800' }}>{currentEx.sets[0]?.reps || '8-12'} REPS</span>
+                                        <span style={{ fontSize: '1.1rem', fontWeight: '800' }}>{currentEx.sets?.[0]?.reps || '8-12'} REPS</span>
                                     </div>
                                 </div>
                             </div>
@@ -219,12 +260,12 @@ const AssignedWorkoutRunner = () => {
                                     <span style={{ textAlign: 'center' }}>LOG</span>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {currentEx.sets.map((set, sIdx) => (
+                                    {(currentEx.sets || []).map((set, sIdx) => (
                                         <div key={set.id} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 1fr 1fr 50px', alignItems: 'center', gap: '1rem', padding: '0.75rem 0.5rem', backgroundColor: set.completed ? 'rgba(190, 255, 0, 0.05)' : 'rgba(255,255,255,0.02)', borderRadius: '12px', border: set.completed ? '1px solid rgba(190, 255, 0, 0.3)' : '1px solid transparent' }}>
                                             <div style={{ fontWeight: '800', fontSize: '0.8rem', textAlign: 'center', color: set.completed ? '#BEFF00' : 'var(--muted-foreground)', backgroundColor: 'rgba(255,255,255,0.05)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{sIdx + 1}</div>
                                             <input type="number" className="input-field" style={{ textAlign: 'center', border: 'none', background: 'transparent', borderBottom: '1px solid var(--border)', padding: '0.25rem' }} value={set.actualWeight} onChange={(e) => handleUpdateSet(activeExerciseIdx, sIdx, 'actualWeight', e.target.value)} placeholder={set.weight || '0'} />
                                             <input type="number" className="input-field" style={{ textAlign: 'center', border: 'none', background: 'transparent', borderBottom: '1px solid var(--border)', padding: '0.25rem' }} value={set.actualReps} onChange={(e) => handleUpdateSet(activeExerciseIdx, sIdx, 'actualReps', e.target.value)} placeholder={set.reps || '0'} />
-                                            <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>{set.restTime}s</div>
+                                            <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>{set.restTime || currentEx.restTime}s</div>
                                             <button onClick={() => handleToggleSet(activeExerciseIdx, sIdx)} style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: set.completed ? '#BEFF00' : 'rgba(255,255,255,0.1)', cursor: 'pointer', border: 'none' }}>
                                                 {set.completed && <CheckCircle2 size={20} color="black" />}
                                             </button>

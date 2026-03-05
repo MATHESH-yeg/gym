@@ -212,13 +212,21 @@ export const DataProvider = ({ children }) => {
     let memberId = member?.id && member.id.trim() !== "" ? member.id : null;
 
     if (!memberId) {
-      const rawName = user.gymName || user.name || "GYM";
-      const words = rawName.split(/[^a-zA-Z0-9]/).filter(w => w.length > 0);
-      let gymPrefix = (words[0] || "GYM").toLowerCase();
+      let prefix = "";
+      if (user.account_type === 'MASTER' || user.account_type === 'BOTH') {
+        const rawName = user.gymName || "GYM";
+        const words = rawName.split(/[^a-zA-Z0-9]/).filter(w => w.length > 0);
+        prefix = (words[0] || "GYM").toLowerCase();
 
-      // If name is plural like 'Diamonds', try to make it singular like 'Diamond'
-      if (gymPrefix.endsWith('s') && gymPrefix.length > 3) {
-        gymPrefix = gymPrefix.slice(0, -1);
+        // If name is plural like 'Diamonds', try to make it singular
+        if (prefix.endsWith('s') && prefix.length > 3) {
+          prefix = prefix.slice(0, -1);
+        }
+      } else {
+        // For Online Coach, use the member's own name as prefix
+        const rawName = member.name || "MEM";
+        const words = rawName.split(/[^a-zA-Z0-9]/).filter(w => w.length > 0);
+        prefix = (words[0] || "MEM").toLowerCase();
       }
 
       // Sequential generation based on current gym members
@@ -229,11 +237,11 @@ export const DataProvider = ({ children }) => {
       });
       let nextNum = ids.length > 0 ? Math.max(...ids) + 1 : 1;
 
-      memberId = `${gymPrefix}-${nextNum.toString().padStart(3, '0')}`;
+      memberId = `${prefix}-${nextNum.toString().padStart(3, '0')}`;
 
       while (users.some((u) => u.id === memberId)) {
         nextNum++;
-        memberId = `${gymPrefix}${nextNum.toString().padStart(3, '0')}`;
+        memberId = `${prefix}-${nextNum.toString().padStart(3, '0')}`;
       }
     } else {
       if (users.some((u) => u.id === memberId)) {
@@ -617,20 +625,20 @@ export const DataProvider = ({ children }) => {
     setWorkoutPlans(newPlans);
   };
 
-  const startWorkout = (plan) => {
+  const startWorkout = useCallback((plan) => {
     if (!user || !user.gymId) return;
     if (!plan) return;
 
     let exercisesToLoad = Array.isArray(plan.exercises) ? plan.exercises : [];
-    let routineName = plan.name;
+    let routineName = plan.name || plan.routineName || "Custom Workout";
 
-    // Handle multi-day schedule plans assigned by Master
+    // Handle multi-day schedule plans assigned by Master/Trainer
     if (plan.schedule && plan.schedule.length > 0 && exercisesToLoad.length === 0) {
       const userAttendance = attendance[user.id] || [];
       const dayIndex = userAttendance.length % plan.schedule.length;
       const dayConfig = plan.schedule[dayIndex];
-      exercisesToLoad = dayConfig.exercises || [];
-      routineName = `${plan.name} - ${dayConfig.focus || `Day ${dayIndex + 1}`}`;
+      exercisesToLoad = dayConfig?.exercises || [];
+      routineName = `${plan.name || 'Routine'} - ${dayConfig?.focus || `Day ${dayIndex + 1}`}`;
     }
 
     const newActive = {
@@ -639,13 +647,13 @@ export const DataProvider = ({ children }) => {
       routineName: routineName,
       routineCode: plan.code || plan.routineCode,
       source: plan.source || 'PERSONAL',
+      createdBy: plan.createdBy || (plan.assignedBy === 'MASTER' ? 'MASTER' : 'TRAINER'),
       date: new Date().toISOString().split("T")[0],
       day: new Date().toLocaleDateString("en-US", { weekday: "long" }),
       startTime: Date.now(),
       gymId: user.gymId,
       userId: user.id,
       exercises: exercisesToLoad.map((ex, exIdx) => {
-        // Normalize sets: Master assigns sets as a number, but execution expects an array of set objects
         let setsArray = [];
         if (Array.isArray(ex.sets)) {
           setsArray = ex.sets;
@@ -662,8 +670,8 @@ export const DataProvider = ({ children }) => {
             ...s,
             id: s.id || `SET_${Date.now()}_${idx}`,
             completed: false,
-            actualReps: s.reps || 0,
-            actualWeight: s.weight || 0,
+            actualReps: s.reps || s.actualReps || 0,
+            actualWeight: s.weight || s.actualWeight || 0,
           })),
         };
       }),
@@ -671,9 +679,9 @@ export const DataProvider = ({ children }) => {
 
     DB.saveActiveWorkout?.(user.id, newActive);
     setActiveWorkout(newActive);
-  };
+  }, [user, attendance]);
 
-  const updateActiveWorkout = (updates) => {
+  const updateActiveWorkout = useCallback((updates) => {
     if (!user) return;
     if (updates === null) {
       cancelActiveWorkout();
@@ -683,13 +691,13 @@ export const DataProvider = ({ children }) => {
     const updated = { ...activeWorkout, ...updates };
     setActiveWorkout(updated);
     DB.saveActiveWorkout?.(user.id, updated);
-  };
+  }, [user, activeWorkout]);
 
-  const cancelActiveWorkout = () => {
+  const cancelActiveWorkout = useCallback(() => {
     if (!user) return;
     setActiveWorkout(null);
     DB.saveActiveWorkout?.(user.id, null);
-  };
+  }, [user]);
 
   const deleteWorkoutPlan = (id) => {
     const current = DB.getWorkoutPlans?.() || [];
@@ -698,7 +706,7 @@ export const DataProvider = ({ children }) => {
     setWorkoutPlans(newPlans);
   };
 
-  const finishWorkout = (finalSession, summaryData = {}) => {
+  const finishWorkout = useCallback((finalSession, summaryData = {}) => {
     if (!user || !user.gymId) return;
 
     const endTime = Date.now();
@@ -760,7 +768,7 @@ export const DataProvider = ({ children }) => {
     record.completedExercises.forEach((ex) => {
       const maxWeight = Math.max(...ex.completedSets.map((s) => s.weight));
       const avgReps = Math.round(
-        ex.completedSets.reduce((sum, s) => sum + s.reps, 0) /
+        ex.completedSets.reduce((sum, sumS) => sum + sumS.reps, 0) /
         ex.completedSets.length
       );
       currentProgress[userId].push({
@@ -782,7 +790,7 @@ export const DataProvider = ({ children }) => {
     refreshData();
 
     return record;
-  };
+  }, [user, logAttendance, refreshData]);
 
   const addNotification = (targetId, message) => {
     if (!user || !user.gymId) return;
@@ -819,19 +827,19 @@ export const DataProvider = ({ children }) => {
     if (!user || !user.gymId) return;
 
     const current = DB.getTrainers?.() || [];
-    let newTrainers;
+    const trainerId = trainer?.id || "TR_" + Date.now();
+    const trainerWithGym = { ...trainer, id: trainerId, gymId: user.gymId };
 
-    if (trainer?.id && current.find((t) => t.id === trainer.id)) {
-      newTrainers = current.map((t) => (t.id === trainer.id ? trainer : t));
+    let newTrainers;
+    if (current.find((t) => t.id === trainerId)) {
+      newTrainers = current.map((t) => (t.id === trainerId ? trainerWithGym : t));
     } else {
-      newTrainers = [
-        ...current,
-        { ...trainer, id: trainer?.id || "TR_" + Date.now(), gymId: user.gymId },
-      ];
+      newTrainers = [...current, trainerWithGym];
     }
 
     DB.saveTrainers?.(newTrainers);
     setTrainers(newTrainers);
+    refreshData();
   };
 
   const deleteTrainer = (id) => {

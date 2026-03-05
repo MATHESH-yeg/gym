@@ -12,17 +12,18 @@ router.post('/auth/register-master', authController.registerMaster);
 router.post('/auth/login', authController.login);
 router.post('/auth/refresh', authController.refresh);
 
-// --- Invite Routes (Brand Admin only) ---
-router.post('/invites/generate', auth, authorize('BRAND_ADMIN'), inviteController.generateInvite);
+// --- Invite Routes (Master Only) ---
+router.post('/invites/generate', auth, authorize('MASTER'), inviteController.generateInvite);
 router.post('/invites/register-trainer', inviteController.registerTrainer);
 
 // --- Workout Management ---
-// Trainers/Admins can assign workouts
-router.post('/workouts/assign', auth, authorize('BRAND_ADMIN', 'TRAINER'), workoutController.createAssignedWorkout);
+// Trainers/Masters can assign workouts
+router.post('/workouts/assign', auth, authorize('MASTER', 'TRAINER'), workoutController.createAssignedWorkout);
 // Members can create personal plans
 router.post('/plans', auth, authorize('MEMBER'), workoutController.createPersonalPlan);
 // Member fetches their assigned workouts
 router.get('/workouts/assigned/me', auth, authorize('MEMBER'), workoutController.getMyAssignedWorkouts);
+
 
 // --- Session Tracking (Universal for those working out) ---
 router.post('/sessions/start', auth, sessionController.startSession);

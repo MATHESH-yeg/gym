@@ -27,8 +27,8 @@ const LoginTrainer = () => {
         setError('');
 
         // Brief delay for premium feel
-        setTimeout(() => {
-            const res = login(code, 'TRAINER', { name });
+        setTimeout(async () => {
+            const res = await login(code, 'TRAINER', { name });
             if (res.success) {
                 navigate('/trainer');
             } else {

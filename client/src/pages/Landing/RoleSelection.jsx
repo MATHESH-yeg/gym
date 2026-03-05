@@ -48,19 +48,64 @@ const RoleSelection = () => {
     ];
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '2rem',
-            background: 'radial-gradient(circle at top right, rgba(132, 204, 22, 0.05), transparent), radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.05), transparent)'
-        }}>
+        <div className="role-selection-container">
+            <style>{`
+                .role-selection-container {
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 2rem 1rem;
+                    background: radial-gradient(circle at top right, rgba(132, 204, 22, 0.05), transparent), radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.05), transparent);
+                    position: relative;
+                }
+
+                .back-intro-btn {
+                    position: absolute;
+                    top: 2rem;
+                    left: 2rem;
+                    border: none;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    color: var(--muted-foreground);
+                    z-index: 10;
+                }
+
+                .role-header {
+                    text-align: center;
+                    margin-bottom: 3rem;
+                    margin-top: 4rem; /* Space for back button if absolute */
+                }
+
+                .role-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 1.5rem;
+                    width: 100%;
+                    maxWidth: 1000px;
+                }
+
+                @media (max-width: 768px) {
+                    .role-selection-container {
+                        padding-top: 5rem;
+                    }
+                    .back-intro-btn {
+                        top: 1rem;
+                        left: 1rem;
+                    }
+                    .role-header h2 {
+                        font-size: 1.75rem !important;
+                    }
+                    .role-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            `}</style>
+
             <button
                 onClick={() => navigate('/')}
-                className="btn-outline"
-                style={{ position: 'absolute', top: '2rem', left: '2rem', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                className="btn-outline back-intro-btn"
             >
                 <ArrowLeft size={18} /> Back to Intro
             </button>
@@ -68,19 +113,13 @@ const RoleSelection = () => {
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ textAlign: 'center', marginBottom: '3rem' }}
+                className="role-header"
             >
                 <h2 style={{ fontSize: '2.5rem', fontWeight: '900', marginBottom: '1rem' }}>Select your role to continue</h2>
                 <p style={{ color: 'var(--muted-foreground)', fontSize: '1.1rem' }}>Choose the interface you want to access</p>
             </motion.div>
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '1.5rem',
-                width: '100%',
-                maxWidth: '1000px'
-            }}>
+            <div className="role-grid">
                 {roles.map((role, idx) => (
                     <motion.div
                         key={role.id}

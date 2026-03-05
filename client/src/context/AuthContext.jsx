@@ -1,6 +1,8 @@
 // AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { DB } from '../utils/db';
+import { api } from '../utils/api';
+
 
 const AuthContext = createContext();
 
@@ -10,159 +12,148 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Load session once, and refresh user from DB to avoid stale localStorage user
   useEffect(() => {
-    try {
-      const savedUserStr = localStorage.getItem('oliva_auth_user');
-      if (!savedUserStr) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
+    const initAuth = async () => {
+      try {
+        const savedUserStr = localStorage.getItem('oliva_auth_user');
+        const token = localStorage.getItem('oliva_access_token');
 
-      const savedUser = JSON.parse(savedUserStr);
-
-      // Refresh from DB (so gymId/status/subscription changes are reflected)
-      let freshUser = null;
-      if (savedUser.role === 'TRAINER') {
-        const trainers = DB.getTrainers?.() || [];
-        freshUser = trainers.find(t => t.id === savedUser.id) || savedUser;
-        if (freshUser) freshUser.role = 'TRAINER';
-      } else {
-        const users = DB.getUsers?.() || [];
-        freshUser = users.find(u => u.id === savedUser.id && u.role === savedUser.role) || savedUser;
-      }
-
-      setUser(freshUser);
-      localStorage.setItem('oliva_auth_user', JSON.stringify(freshUser));
-    } catch (e) {
-      console.error('AuthContext: Failed to restore session', e);
-      setUser(null);
-      localStorage.removeItem('oliva_auth_user');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const login = useCallback((id, role, extraData = {}) => {
-    console.log('Logging in:', id, role, extraData);
-    let foundUser = null;
-
-    if (role === 'TRAINER') {
-      const trainers = DB.getTrainers?.() || [];
-      // Search in trainers list by code OR id (case-insensitive for code)
-      foundUser = trainers.find(t =>
-        (t.code && t.code.toUpperCase() === id.toUpperCase()) ||
-        (t.id && t.id.toUpperCase() === id.toUpperCase())
-      );
-
-      if (foundUser) {
-        foundUser = { ...foundUser, role: 'TRAINER' };
-      } else {
-        // Fallback: search in general users list
-        const users = DB.getUsers?.() || [];
-        foundUser = users.find(u =>
-          u.role === 'TRAINER' &&
-          (u.id.toUpperCase() === id.toUpperCase() || (u.trainerCode && u.trainerCode.toUpperCase() === id.toUpperCase()))
-        );
-      }
-    } else {
-      const users = DB.getUsers?.() || [];
-      foundUser = users.find(u => u.id.toUpperCase() === id.toUpperCase() && u.role === role);
-    }
-
-    if (!foundUser) {
-      return { success: false, message: 'Invalid Login Code/ID.' };
-    }
-
-    // Member or Trainer name check (more lenient)
-    if ((role === 'MEMBER' || role === 'TRAINER') && extraData?.name) {
-      const dbName = (foundUser.name || '').toLowerCase();
-      const inputName = (extraData.name || '').toLowerCase();
-
-      // Split into words and check if any word from input is in DB name OR vice versa
-      const dbWords = dbName.split(/\s+/).filter(w => w.length > 0);
-      const inputWords = inputName.split(/\s+/).filter(w => w.length > 0);
-
-      const isMatch = inputWords.some(iw => dbWords.some(dw => dw.includes(iw) || iw.includes(dw))) ||
-        dbName.includes(inputName) ||
-        inputName.includes(dbName);
-
-      if (!isMatch && inputName.length > 0) {
-        return { success: false, message: 'Name does not match our records.' };
-      }
-    }
-
-    // Member expiry
-    if (role === 'MEMBER' && foundUser.status === 'expired') {
-      return { success: false, message: 'Membership expired. Please contact trainer.' };
-    }
-
-    // Master trial check
-    let finalUser = { ...foundUser };
-    if (role === 'MASTER' && finalUser.subscriptionStatus === 'trial' && finalUser.trialEndDate) {
-      const now = new Date();
-      const trialEnd = new Date(finalUser.trialEndDate);
-      if (now > trialEnd) finalUser.isTrialExpired = true;
-    }
-
-    setUser(finalUser);
-    localStorage.setItem('oliva_auth_user', JSON.stringify(finalUser));
-    return { success: true };
-  }, []);
-
-  const registerGymOwner = useCallback((formData) => {
-    const users = DB.getUsers?.() || [];
-
-    const cleanGymName = (formData.gymName || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '');
-
-    let masterLoginCode = `${cleanGymName}master`;
-
-    if (users.some(u => u.id === masterLoginCode)) {
-      let counter = 1;
-      while (true) {
-        const suffix = counter.toString().padStart(2, '0');
-        const nextCode = `${cleanGymName}master${suffix}`;
-        if (!users.some(u => u.id === nextCode)) {
-          masterLoginCode = nextCode;
-          break;
+        if (!savedUserStr || !token) {
+          setUser(null);
+          setLoading(false);
+          return;
         }
-        counter++;
+
+        const savedUser = JSON.parse(savedUserStr);
+
+        // Map brand_id to gymId for DataContext compatibility
+        if (savedUser.brand_id && !savedUser.gymId) {
+          savedUser.gymId = savedUser.brand_id;
+        }
+
+        // Safety normalization for UI consistency
+        if (!savedUser.name) savedUser.name = savedUser.full_name || savedUser.fullName;
+        if (!savedUser.gymName) savedUser.gymName = savedUser.gym_name;
+        if (!savedUser.mobile) savedUser.mobile = savedUser.phone;
+        if (!savedUser.address) savedUser.address = savedUser.gym_location || savedUser.gymLocation;
+
+        setUser(savedUser);
+      } catch (e) {
+        console.error('AuthContext: Failed to restore session', e);
+        setUser(null);
+        localStorage.removeItem('oliva_auth_user');
+        localStorage.removeItem('oliva_access_token');
+      } finally {
+        setLoading(false);
       }
-    }
-
-    const gymId = `GYM_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
-    const now = new Date();
-    const trialEndDate = new Date(now);
-    trialEndDate.setDate(trialEndDate.getDate() + 7);
-
-    const accountType = formData.accountType || 'MASTER';
-
-    const newMaster = {
-      id: masterLoginCode,
-      role: 'MASTER',
-      name: formData.name || formData.fullName || 'User',
-      gymId: (accountType === 'MASTER' || accountType === 'BOTH') ? gymId : null,
-      ...formData,
-      accountType,
-      yearsOfExperience: (accountType === 'ONLINE_COACH' || accountType === 'BOTH') ? formData.yearsOfExperience : null,
-      status: 'active',
-      subscriptionStatus: 'trial',
-      trialStartDate: now.toISOString(),
-      trialEndDate: trialEndDate.toISOString(),
-      createdAt: now.toISOString(),
     };
 
-    DB.saveUsers?.([...users, newMaster]);
+    initAuth();
+  }, []);
 
-    // (Optional) If you still want global gymName
-    const currentSettings = DB.getSettings?.() || {};
-    DB.saveSettings?.({ ...currentSettings, gymName: formData.gymName });
+  const login = useCallback(async (email, password, extra) => {
+    try {
+      setLoading(true);
 
-    setUser(newMaster);
-    localStorage.setItem('oliva_auth_user', JSON.stringify(newMaster));
-    return { success: true, user: newMaster };
+      // 1. Try Real API Login first (for Master accounts and synced users)
+      try {
+        const { user: backendUser, accessToken, refreshToken } = await api.auth.login(email, password);
+
+        const sessionUser = {
+          ...backendUser,
+          gymId: backendUser.brand_id,
+          name: backendUser.full_name || backendUser.name,
+          gymName: backendUser.gym_name || backendUser.gymName,
+          mobile: backendUser.phone || backendUser.mobile,
+          role: backendUser.role
+        };
+
+        setUser(sessionUser);
+        localStorage.setItem('oliva_auth_user', JSON.stringify(sessionUser));
+        localStorage.setItem('oliva_access_token', accessToken);
+        localStorage.setItem('oliva_refresh_token', refreshToken);
+        setLoading(false);
+        return { success: true };
+      } catch (apiError) {
+        console.warn('API Login failed, checking localStorage fallback...', apiError.message);
+        // If API fails, we continue to check localStorage fallback below
+      }
+
+      // 2. Fallback for LocalStorage Users (Members, Trainers added via Dashboard)
+      const role = password; // LoginMember/LoginTrainer pass role as 2nd arg
+      const searchId = email.trim();
+
+      if (role === 'MEMBER') {
+        const members = DB.getUsers();
+        const found = members.find(u =>
+          (u.id === searchId || u.login_code === searchId) && u.role === 'MEMBER'
+        );
+        if (found) {
+          const sessionUser = { ...found, role: 'MEMBER' };
+          setUser(sessionUser);
+          localStorage.setItem('oliva_auth_user', JSON.stringify(sessionUser));
+          setLoading(false);
+          return { success: true };
+        }
+      }
+
+      if (role === 'TRAINER') {
+        const trainers = DB.getTrainers();
+        const found = trainers.find(t =>
+          (t.id === searchId || t.code === searchId || t.trainerCode === searchId) &&
+          t.status !== 'Deleted'
+        );
+        if (found) {
+          const sessionUser = { ...found, role: 'TRAINER' };
+          setUser(sessionUser);
+          localStorage.setItem('oliva_auth_user', JSON.stringify(sessionUser));
+          setLoading(false);
+          return { success: true };
+        }
+      }
+
+      setLoading(false);
+      return { success: false, message: 'Invalid credentials' };
+    } catch (error) {
+      console.error('Login process error:', error);
+      setLoading(false);
+      return { success: false, message: error.message || 'Login failed' };
+    }
+  }, []);
+
+  const registerGymOwner = useCallback(async (formData) => {
+    try {
+      // Use the API to register on the backend (PostgreSQL)
+      const { user: backendUser, accessToken, refreshToken } = await api.auth.registerMaster({
+        email: formData.email,
+        password: formData.password || 'password123', // Default for now if not in UI
+        fullName: formData.name,
+        accountType: formData.accountType,
+        gymName: formData.gymName,
+        gymLocation: formData.gymLocation,
+        yearsOfExperience: formData.yearsOfExperience,
+        phone: formData.phone
+      });
+
+      const sessionUser = {
+        ...backendUser,
+        id: backendUser.id, // Backend returns UUID
+        gymId: backendUser.brand_id, // Map for DataContext compatibility
+        name: backendUser.full_name || backendUser.name || formData.name, // Normalize name
+        gymName: backendUser.gym_name || backendUser.gymName || formData.gymName, // Normalize gymName
+        mobile: backendUser.phone || backendUser.mobile || formData.phone, // Normalize phone
+        address: backendUser.gym_location || backendUser.gymLocation || formData.gymLocation, // Normalize address
+        role: 'MASTER'
+      };
+
+      setUser(sessionUser);
+      localStorage.setItem('oliva_auth_user', JSON.stringify(sessionUser));
+      localStorage.setItem('oliva_access_token', accessToken);
+
+      return { success: true, user: sessionUser };
+    } catch (error) {
+      console.error('Registration failed:', error);
+      return { success: false, message: error.message || 'Registration failed' };
+    }
   }, []);
 
   const signup = useCallback((userData) => {

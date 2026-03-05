@@ -253,7 +253,17 @@ const MemberDashboard = () => {
                     <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                         {memberData?.assignedProgram?.name ? `${memberData.assignedProgram.name}` : 'No program assigned yet.'}
                     </p>
-                    <button className="btn-primary" style={{ width: '100%' }} onClick={() => navigate(memberData?.assignedProgram?.code ? `/member/workout/execute/${memberData.assignedProgram.code}` : '/member/workout-plans')}>
+                    <button
+                        className="btn-primary"
+                        style={{ width: '100%' }}
+                        onClick={() => {
+                            if (memberData?.assignedProgram?.code) {
+                                navigate('/member/workout', { state: { code: memberData.assignedProgram.code } });
+                            } else {
+                                navigate('/member/workout-plans');
+                            }
+                        }}
+                    >
                         <PlayCircle size={20} /> Let's Start
                     </button>
                 </div>

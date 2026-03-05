@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Shield, ArrowLeft } from 'lucide-react';
 
 const LoginMaster = () => {
-    const [id, setId] = useState('MASTER01');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const { login, user, loading } = useAuth();
     const navigate = useNavigate();
@@ -17,9 +18,10 @@ const LoginMaster = () => {
         }
     }, [user, loading, navigate]);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const res = login(id, 'MASTER');
+        setError('');
+        const res = await login(email, password, 'MASTER');
         if (res.success) {
             navigate('/master');
         } else {
@@ -36,26 +38,37 @@ const LoginMaster = () => {
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <Shield size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
                     <h2 style={{ fontSize: '1.75rem' }}>Master Login</h2>
-                    <p style={{ color: 'var(--muted-foreground)' }}>Enter your Trainer ID to access the studio</p>
+                    <p style={{ color: 'var(--muted-foreground)' }}>Enter your credentials to access the studio</p>
                 </div>
 
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Master ID</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email or Master Code</label>
                         <input
                             className="input-field"
                             type="text"
-                            placeholder="e.g. MASTER01"
-                            value={id}
-                            onChange={(e) => setId(e.target.value)}
+                            placeholder="Email or Master Code"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Password</label>
+                        <input
+                            className="input-field"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
                     {error && <p style={{ color: 'var(--destructive)', fontSize: '0.875rem' }}>{error}</p>}
-                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>Login</button>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>
+                        {loading ? 'Authenticating...' : 'Login'}
+                    </button>
                 </form>
-
-
             </div>
         </div>
     );

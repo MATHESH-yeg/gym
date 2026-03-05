@@ -8,7 +8,8 @@ import GlowingBubbles from '../../../components/effects/GlowingBubbles';
 
 const TodayWorkout = () => {
     const { user } = useAuth();
-    const { workoutPlans, activeWorkout, startWorkout, attendance } = useData();
+    const { workoutPlans, activeWorkout, startWorkout, attendance, members } = useData();
+    const memberData = members?.find(m => m.id === user?.id) || user;
     const navigate = useNavigate();
     const location = useLocation();
     const [code, setCode] = useState('');
@@ -18,9 +19,12 @@ const TodayWorkout = () => {
     // If navigated from Dashboard or Plans with a code
     useEffect(() => {
         if (location.state?.code) {
-            const initialCode = location.state.code;
+            const initialCode = location.state.code.toUpperCase();
             setCode(initialCode);
-            const plan = workoutPlans.find(p => p.code === initialCode.toUpperCase());
+            let plan = workoutPlans.find(p => p.code === initialCode);
+            if (!plan && memberData?.assignedProgram?.code === initialCode) {
+                plan = memberData.assignedProgram;
+            }
             if (plan) setFoundPlan(plan);
         }
     }, [location.state, workoutPlans]);
@@ -37,7 +41,14 @@ const TodayWorkout = () => {
         setCode(upCode);
         setError('');
 
-        const plan = workoutPlans.find(p => p.code === upCode);
+        // Search in global plans
+        let plan = workoutPlans.find(p => p.code === upCode);
+
+        // If not found, check the user's directly assigned program
+        if (!plan && memberData?.assignedProgram?.code === upCode) {
+            plan = memberData.assignedProgram;
+        }
+
         if (plan) {
             setFoundPlan(plan);
         } else {
@@ -50,7 +61,7 @@ const TodayWorkout = () => {
         if (foundPlan) {
             // We set this as the assigned workout with appropriate source
             startWorkout({ ...foundPlan, source: 'ASSIGNED' });
-            navigate(`/today/start`);
+            navigate(`/today/start`, { state: { plan: foundPlan } });
         } else {
             setError('Invalid Routine Code. Please check your Notebook.');
         }

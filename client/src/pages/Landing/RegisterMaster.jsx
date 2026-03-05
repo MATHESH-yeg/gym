@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Shield, ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { Shield, ArrowLeft, ArrowRight, Check, Copy, CheckCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const RegisterMaster = () => {
     const navigate = useNavigate();
     const { registerGymOwner } = useAuth();
     const [step, setStep] = useState(1);
+    const [copied, setCopied] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         gender: 'Male',
@@ -16,6 +17,7 @@ const RegisterMaster = () => {
         gymLocation: '',
         phone: '',
         email: '',
+        password: '',
         accountType: '', // 'MASTER', 'ONLINE_COACH', 'BOTH'
         yearsOfExperience: ''
     });
@@ -54,8 +56,17 @@ const RegisterMaster = () => {
 
     const [createdUser, setCreatedUser] = useState(null);
 
-    const handleSubmit = (e) => {
+    const handleCopy = () => {
+        if (createdUser?.login_code) {
+            navigator.clipboard.writeText(createdUser.login_code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
 
         // Final validation before submit
         if (!formData.accountType) {
@@ -73,7 +84,7 @@ const RegisterMaster = () => {
             return;
         }
 
-        const res = registerGymOwner(formData);
+        const res = await registerGymOwner(formData);
         if (res.success) {
             setCreatedUser(res.user);
             setStep(3);
@@ -202,6 +213,10 @@ const RegisterMaster = () => {
                                 <label className="input-label">Email ID</label>
                                 <input className="input-field" type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="john@example.com" />
                             </div>
+                            <div>
+                                <label className="input-label">Password</label>
+                                <input className="input-field" type="password" name="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" minLength={6} />
+                            </div>
 
                             {error && <div style={{ color: 'var(--destructive)', fontSize: '0.875rem' }}>{error}</div>}
 
@@ -267,13 +282,39 @@ const RegisterMaster = () => {
                         >
                             <div style={{ background: 'rgba(132, 204, 22, 0.1)', padding: '1.5rem', borderRadius: '1rem', marginBottom: '1.5rem', border: '1px solid var(--primary)' }}>
                                 <h3 style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                                    Your Master Login Code
+                                    Your Portal Login Code
                                 </h3>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)', letterSpacing: '0.05em', userSelect: 'all', cursor: 'text' }}>
-                                    {createdUser.id}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '1rem',
+                                    marginTop: '0.5rem'
+                                }}>
+                                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary)', letterSpacing: '0.05em', userSelect: 'all' }}>
+                                        {createdUser.login_code}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopy}
+                                        style={{
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            borderRadius: '8px',
+                                            padding: '0.5rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title="Copy to clipboard"
+                                    >
+                                        {copied ? <CheckCheck size={18} color="var(--primary)" /> : <Copy size={18} color="var(--muted-foreground)" />}
+                                    </button>
                                 </div>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.5rem' }}>
-                                    Please save this code. You will need it to log in as Master.
+                                    Please save this code. You can use this or your <strong>Email</strong> to log in.
                                 </p>
                             </div>
 

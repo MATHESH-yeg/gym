@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const TrainerWorkoutPlans = () => {
     const { user } = useAuth();
-    const { members, assignWorkout, workoutPlans } = useData();
+    const { members, assignWorkout, workoutPlans, saveWorkoutPlan } = useData();
 
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
@@ -65,6 +65,22 @@ const TrainerWorkoutPlans = () => {
         }
 
         const code = 'TRN-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+        const newPlan = {
+            id: 'PLN_' + Date.now(),
+            code,
+            name: routineBuilder.planName,
+            schedule: routineBuilder.schedule,
+            assignedBy: user.id,
+            assignedTo: selectedMember.id,
+            createdBy: user.id,
+            trainerName: user.name,
+            createdAt: new Date().toISOString()
+        };
+
+        // Save it to global workout plans so it's searchable by code
+        saveWorkoutPlan(newPlan);
+
         assignWorkout(selectedMember.id, {
             name: routineBuilder.planName,
             code,

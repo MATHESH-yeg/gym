@@ -88,16 +88,47 @@ Thank you for choosing OLIVA GYM!
     const daysRemaining = getDaysRemaining();
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '1200px', margin: '0 auto', padding: '0 1rem' }}>
+            <style>{`
+                .membership-status-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 1.5rem;
+                }
+
+                .plans-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 1.5rem;
+                }
+
+                @media (max-width: 768px) {
+                    .membership-status-header {
+                        flex-direction: column;
+                        text-align: center;
+                    }
+                    .membership-status-header div:last-child {
+                        text-align: center !important;
+                    }
+                    .status-title {
+                        font-size: 1.75rem !important;
+                    }
+                    .plans-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            `}</style>
+
             {/* Status Header */}
             <div className="premium-card" style={{
                 borderLeft: `6px solid ${isExpired ? '#ef4444' : 'var(--primary)'}`,
                 background: isExpired ? 'rgba(239, 68, 68, 0.05)' : 'linear-gradient(145deg, rgba(132, 204, 22, 0.05), var(--surface))'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+                <div className="membership-status-header">
                     <div>
                         <p style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>Current Membership Status</p>
-                        <h2 style={{ fontSize: '2.5rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <h2 className="status-title" style={{ fontSize: '2.5rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'inherit' }}>
                             {isExpired ? 'EXPIRED' : 'ACTIVE'}
                             {isExpired ? <AlertCircle size={32} color="#ef4444" /> : <ShieldCheck size={32} color="var(--primary)" />}
                         </h2>
@@ -122,7 +153,7 @@ Thank you for choosing OLIVA GYM!
                 <h3 style={{ fontSize: '1.75rem', marginBottom: '1.5rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <CreditCard size={28} color="var(--primary)" /> {isExpired ? 'Choose a Plan' : 'Renew or Upgrade'}
                 </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+                <div className="plans-grid">
                     {plans.map((plan, idx) => (
                         <motion.div
                             key={plan.name}
@@ -197,34 +228,42 @@ Thank you for choosing OLIVA GYM!
                             <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Purchase a plan to see your payment records here.</p>
                         </div>
                     ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
                             <thead>
                                 <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--muted-foreground)' }}>
-                                    <th style={{ padding: '1rem 0', fontWeight: '700' }}>Plan</th>
-                                    <th style={{ padding: '1rem 0', fontWeight: '700' }}>Amount</th>
-                                    <th style={{ padding: '1rem 0', fontWeight: '700' }}>Payment Date</th>
-                                    <th style={{ padding: '1rem 0', fontWeight: '700' }}>Valid Till</th>
-                                    <th style={{ padding: '1rem 0', textAlign: 'center', fontWeight: '700' }}>Status</th>
-                                    <th style={{ padding: '1rem 0', textAlign: 'right', fontWeight: '700' }}>Invoice</th>
+                                    <th style={{ padding: '1.25rem 1rem', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Plan</th>
+                                    <th style={{ padding: '1.25rem 1rem', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Amount</th>
+                                    <th style={{ padding: '1.25rem 1rem', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Payment Date</th>
+                                    <th style={{ padding: '1.25rem 1rem', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Valid Till</th>
+                                    <th style={{ padding: '1.25rem 1rem', textAlign: 'center', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Status</th>
+                                    <th style={{ padding: '1.25rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.75rem', textTransform: 'uppercase' }}>Invoice</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {myPayments.map(p => (
-                                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <td style={{ padding: '1rem 0', fontWeight: '700' }}>{p.planName}</td>
-                                        <td style={{ padding: '1rem 0', color: 'var(--primary)', fontWeight: '800' }}>₹{p.amount}</td>
-                                        <td style={{ padding: '1rem 0' }}>{new Date(p.paymentDate).toLocaleDateString()}</td>
-                                        <td style={{ padding: '1rem 0' }}>{new Date(p.validTill).toLocaleDateString()}</td>
-                                        <td style={{ padding: '1rem 0', textAlign: 'center' }}>
-                                            <span className="badge badge-primary" style={{ fontSize: '0.7rem', fontWeight: '900', backgroundColor: '#BEFF00', color: 'black' }}>{p.status}</span>
+                                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }} className="table-row-hover">
+                                        <td style={{ padding: '1.25rem 1rem', fontWeight: '700', color: 'var(--primary)' }}>{p.planName}</td>
+                                        <td style={{ padding: '1.25rem 1rem', color: '#fff', fontWeight: '800' }}>₹{p.amount}</td>
+                                        <td style={{ padding: '1.25rem 1rem', color: 'var(--muted-foreground)' }}>{new Date(p.paymentDate).toLocaleDateString()}</td>
+                                        <td style={{ padding: '1.25rem 1rem', color: 'var(--muted-foreground)' }}>{new Date(p.validTill).toLocaleDateString()}</td>
+                                        <td style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>
+                                            <span style={{
+                                                fontSize: '0.65rem',
+                                                fontWeight: '900',
+                                                backgroundColor: '#BEFF00',
+                                                color: 'black',
+                                                padding: '4px 10px',
+                                                borderRadius: '4px',
+                                                textTransform: 'uppercase'
+                                            }}>{p.status}</span>
                                         </td>
-                                        <td style={{ padding: '1rem 0', textAlign: 'right' }}>
+                                        <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}>
                                             <button
                                                 onClick={() => downloadInvoice(p)}
                                                 className="btn-outline"
-                                                style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.7rem', height: 'auto', minHeight: 'auto' }}
                                             >
-                                                <Download size={14} /> Download
+                                                <Download size={12} /> Download
                                             </button>
                                         </td>
                                     </tr>

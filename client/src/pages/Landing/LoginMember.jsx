@@ -18,9 +18,9 @@ const LoginMember = () => {
         }
     }, [user, loading, navigate]);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const res = login(id, 'MEMBER', { name });
+        const res = await login(id, 'MEMBER', { name });
         if (res.success) {
             navigate('/member');
         } else {

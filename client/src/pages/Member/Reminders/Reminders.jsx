@@ -123,10 +123,45 @@ const Reminders = () => {
     };
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '2rem', height: '100%' }}>
+        <div className="reminders-container">
+            <style>{`
+                .reminders-container {
+                    display: grid; 
+                    grid-template-columns: 1fr 380px; 
+                    gap: 2rem; 
+                    height: 100%;
+                }
+
+                @media (max-width: 1200px) {
+                    .reminders-container {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .calendar-card {
+                        padding: 1rem !important;
+                    }
+                    .calendar-grid {
+                        gap: 4px !important;
+                    }
+                    .calendar-day-node {
+                        border-radius: 8px !important;
+                    }
+                    .daily-reminders-header {
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 1rem;
+                    }
+                    .daily-reminders-header button {
+                        width: 100%;
+                    }
+                }
+            `}</style>
+
             {/* Left Column: Calendar and Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div className="premium-card" style={{ padding: '2rem' }}>
+                <div className="premium-card calendar-card" style={{ padding: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                         <div>
                             <h2 style={{ fontSize: '1.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -237,7 +272,7 @@ const Reminders = () => {
                                     exit={{ opacity: 0, x: 20 }}
                                     style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
                                 >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <div className="daily-reminders-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                         <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Schedule for {new Date(selectedDate).toLocaleDateString('default', { day: 'numeric', month: 'long' })}</h3>
                                         <button className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }} onClick={() => {
                                             setEditingReminderId(null);

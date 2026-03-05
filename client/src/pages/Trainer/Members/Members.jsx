@@ -59,13 +59,45 @@ const TrainerMembers = () => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <div>
+            <style>{`
+                .members-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 1.5rem;
+                    flex-wrap: wrap;
+                }
+
+                .search-actions {
+                    display: flex;
+                    gap: 1rem;
+                    flex-grow: 1;
+                    justify-content: flex-end;
+                }
+
+                @media (max-width: 768px) {
+                    .members-header {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .search-actions {
+                        flex-direction: column;
+                    }
+                    .search-wrapper {
+                        max-width: none !important;
+                    }
+                    .title-text h1 {
+                        font-size: 1.5rem !important;
+                    }
+                }
+            `}</style>
+            <div className="members-header">
+                <div className="title-text">
                     <h1 style={{ fontSize: '2rem', fontWeight: '900' }}>Manage Members</h1>
                     <p style={{ color: 'var(--muted-foreground)' }}>Monitor and guide your assigned gym members</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', flexGrow: 1, justifyContent: 'flex-end', minWidth: '300px' }}>
-                    <div style={{ position: 'relative', flexGrow: 1, maxWidth: '400px' }}>
+                <div className="search-actions">
+                    <div className="search-wrapper" style={{ position: 'relative', flexGrow: 1, maxWidth: '400px' }}>
                         <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} size={18} />
                         <input
                             className="input-field"

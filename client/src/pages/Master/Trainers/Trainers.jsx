@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../../context/DataContext';
+import { useAuth } from '../../../context/AuthContext';
 import {
     Plus, Search, Edit, Trash2, User, Phone, Mail,
     Calendar, Award, DollarSign, TrendingUp, Users,
@@ -12,6 +13,7 @@ const Trainers = () => {
     const {
         trainers = [], members = [], payments = [], saveTrainer, deleteTrainer, updateMember
     } = useData();
+    const { user } = useAuth();
     const navigate = useNavigate();
 
     // UI state
@@ -21,6 +23,7 @@ const Trainers = () => {
     const [showDeleted, setShowDeleted] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [assignSearch, setAssignSearch] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Trainer form state
     const [formData, setFormData] = useState({
@@ -30,6 +33,7 @@ const Trainers = () => {
         specialization: '',
         joiningDate: new Date().toISOString().split('T')[0],
         commissionPercentage: 0,
+        trainerCode: '', // New field for master to enter identifying code/number
         status: 'Active'
     });
 
@@ -71,6 +75,7 @@ const Trainers = () => {
                 ...trainer,
                 joiningDate: trainer.joiningDate || new Date().toISOString().split('T')[0],
                 commissionPercentage: trainer.commissionPercentage || 0,
+                trainerCode: trainer.trainerCode || '',
                 status: trainer.status || 'Active'
             });
         } else {
@@ -82,21 +87,42 @@ const Trainers = () => {
                 specialization: '',
                 joiningDate: new Date().toISOString().split('T')[0],
                 commissionPercentage: 0,
+                trainerCode: '',
                 status: 'Active'
             });
         }
         setIsModalOpen(true);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        saveTrainer({
-            ...editingTrainer,
-            ...formData,
-            id: editingTrainer?.id || `TR-${Math.floor(1000 + Math.random() * 9000)}`,
-            code: editingTrainer?.code || `OLV-TR-${Math.floor(100 + Math.random() * 900)}`
-        });
-        setIsModalOpen(false);
+        if (isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+            const trainerId = editingTrainer?.id || `TR-${Date.now()}`;
+
+            // Generate customized code: [GYM] TR [MASTER_CODE] [IDENTIFIER]
+            let generatedCode = formData.trainerCode;
+            if (!editingTrainer || !editingTrainer.code) {
+                const gymShort = (user.gymName || 'GYM').split(' ')[0].toUpperCase();
+                const masterCode = (user.login_code || '').replace('MASTER', '') || 'M';
+                const identifier = formData.trainerCode || Math.floor(100 + Math.random() * 899);
+                generatedCode = `${gymShort} TR ${masterCode} ${identifier}`.replace(/\s+/g, ' ').trim();
+            }
+
+            await saveTrainer({
+                ...editingTrainer,
+                ...formData,
+                id: trainerId,
+                code: generatedCode
+            });
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to save trainer:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleToggleStatus = (trainer) => {
@@ -229,7 +255,7 @@ const Trainers = () => {
                                     <Mail size={14} /> {trainer.email || 'N/A'}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
-                                    <Award size={14} /> {trainer.id}
+                                    <Award size={14} /> {trainer.code || trainer.id}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
                                     <Calendar size={14} /> {trainer.joiningDate}
@@ -366,6 +392,19 @@ const Trainers = () => {
                                         />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Trainer Code/ID Part</label>
+                                        <input
+                                            className="input-field"
+                                            value={formData.trainerCode}
+                                            onChange={e => setFormData({ ...formData, trainerCode: e.target.value })}
+                                            placeholder="e.g. 001"
+                                            title="This will be part of the final generated trainer code"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <label style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Commission % (Optional)</label>
                                         <input
                                             type="number"
@@ -377,24 +416,24 @@ const Trainers = () => {
                                             max="100"
                                         />
                                     </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Status</label>
+                                        <select
+                                            className="input-field"
+                                            value={formData.status}
+                                            onChange={e => setFormData({ ...formData, status: e.target.value })}
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                            {editingTrainer && <option value="Deleted">Deleted</option>}
+                                        </select>
+                                    </div>
                                 </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <label style={{ fontSize: '0.875rem', color: 'var(--muted-foreground)' }}>Status</label>
-                                    <select
-                                        className="input-field"
-                                        value={formData.status}
-                                        onChange={e => setFormData({ ...formData, status: e.target.value })}
-                                    >
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        {editingTrainer && <option value="Deleted">Deleted</option>}
-                                    </select>
-                                </div>
-
                                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                    <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingTrainer ? 'Update Trainer' : 'Save Trainer'}</button>
+                                    <button type="button" className="btn-outline" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</button>
+                                    <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={isSubmitting}>
+                                        {isSubmitting ? 'Saving...' : (editingTrainer ? 'Update Trainer' : 'Save Trainer')}
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>
